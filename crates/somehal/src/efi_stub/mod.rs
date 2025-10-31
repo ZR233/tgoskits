@@ -27,17 +27,7 @@ pub unsafe extern "C" fn efi_pe_entry(
 
         crate::console::set_printer(&UefiPrinter);
 
-        println!("Hello {}", 123);
-        let acpi_rsdp = get_acpi_rsdp();
-
-        // 获取命令行
-        if let Ok(loaded_image) = ::uefi::boot::open_protocol_exclusive::<LoadedImage>(image_handle)
-            && let Ok(cmdline) = loaded_image.load_options_as_cstr16()
-        {
-            println!("Cmdline: {}", cmdline);
-        }
-
-        crate::arch::entry::prepare_kernel_entry();
+        crate::arch::entry::efi_kernel_prepare();
     }
 
     // 返回成功状态

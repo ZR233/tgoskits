@@ -14,3 +14,4 @@ pub mod arch;
 #[cfg(efi)]
 mod efi_stub;
 mod elf;
+mod acpi;
