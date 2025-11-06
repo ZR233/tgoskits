@@ -114,12 +114,71 @@ impl From<u32> for PhysAddr {
     }
 }
 
-#[derive(thiserror::Error, Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(thiserror::Error, Clone, Copy, PartialEq, Eq)]
 pub enum PagingError {
-    #[error("can't allocate memory")]
+    #[error("Memory allocation failed")]
     NoMemory,
-    #[error("{0} is not aligned")]
-    NotAligned(&'static str),
-    #[error("already mapped: {0:#x?}")]
-    AlreadyMapped(VirtAddr),
+    #[error("Address alignment error: {details}")]
+    AlignmentError { details: &'static str },
+    #[error("Mapping conflict: virtual address {vaddr:#x} already mapped to physical address {existing_paddr:#x}")]
+    MappingConflict {
+        vaddr: VirtAddr,
+        existing_paddr: PhysAddr,
+    },
+    #[error("Address overflow detected: {details}")]
+    AddressOverflow { details: &'static str },
+    #[error("Invalid mapping size: {details}")]
+    InvalidSize { details: &'static str },
+    #[error("Page table hierarchy error: {details}")]
+    HierarchyError { details: &'static str },
+}
+
+impl core::fmt::LowerHex for VirtAddr {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:#x}", self.raw())
+    }
+}
+
+impl core::fmt::LowerHex for PhysAddr {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:#x}", self.raw())
+    }
+}
+
+impl PagingError {
+    pub fn alignment_error(msg: &'static str) -> Self {
+        Self::AlignmentError { details: msg }
+    }
+
+    pub fn mapping_conflict(vaddr: VirtAddr, existing_paddr: PhysAddr) -> Self {
+        Self::MappingConflict { vaddr, existing_paddr }
+    }
+
+    pub fn address_overflow(msg: &'static str) -> Self {
+        Self::AddressOverflow { details: msg }
+    }
+
+    pub fn invalid_size(msg: &'static str) -> Self {
+        Self::InvalidSize { details: msg }
+    }
+
+    pub fn hierarchy_error(msg: &'static str) -> Self {
+        Self::HierarchyError { details: msg }
+    }
+}
+
+impl core::fmt::Debug for PagingError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::NoMemory => write!(f, "NoMemory"),
+            Self::AlignmentError { details } => write!(f, "AlignmentError: {}", details),
+            Self::MappingConflict { vaddr, existing_paddr } => {
+                write!(f, "MappingConflict: vaddr={:#x}, existing_paddr={:#x}",
+                       vaddr.raw(), existing_paddr.raw())
+            }
+            Self::AddressOverflow { details } => write!(f, "AddressOverflow: {}", details),
+            Self::InvalidSize { details } => write!(f, "InvalidSize: {}", details),
+            Self::HierarchyError { details } => write!(f, "HierarchyError: {}", details),
+        }
+    }
 }

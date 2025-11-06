@@ -1,5 +1,5 @@
-[unstable]
-build-std = ["core", "alloc"]
+# [unstable]
+# build-std = ["core", "alloc"]
 
 [target.'cfg(target_os = "none")']
 runner = "cargo osrun"
