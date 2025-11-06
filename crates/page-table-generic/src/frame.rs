@@ -27,7 +27,6 @@ where
     pub(crate) const PT_INDEX_BITS: usize = cal_index_bits::<T>();
     pub(crate) const PT_VALID_BITS: usize = Self::PT_INDEX_BITS + Self::PT_INDEX_SHIFT;
     pub(crate) const LEN: usize = T::PAGE_SIZE / core::mem::size_of::<T::P>();
-    pub(crate) const PT_INDEX_MASK: usize = (1 << (Self::PT_VALID_BITS - Self::PT_INDEX_SHIFT)) - 1;
     pub(crate) const PT_LEVEL: usize = T::LEVEL_BITS.len();
 
     /// 创建新的页表帧（分配并清零）
@@ -73,11 +72,20 @@ where
 
     /// 计算指定级别对应的映射大小
     /// - Level 1 (叶子): PAGE_SIZE
-    /// - Level 2: PAGE_SIZE << INDEX_BITS
-    /// - Level 3: PAGE_SIZE << (INDEX_BITS * 2)
-    /// - Level 4: PAGE_SIZE << (INDEX_BITS * 3)
+    /// - Level 2: PAGE_SIZE << LEVEL_BITS[最后一级]
+    /// - Level 3: PAGE_SIZE << (LEVEL_BITS[最后一级] + LEVEL_BITS[倒数第二级])
+    /// - Level N: PAGE_SIZE << (sum of LEVEL_BITS from last to N-1)
     pub fn level_size(level: usize) -> usize {
-        let shift = T::LEVEL_BITS.iter().take(level - 1).sum::<usize>();
+        if level == 1 {
+            return T::PAGE_SIZE;
+        }
+        // 从最后一级开始累加位数，直到当前级别的前一级
+        // 例如：对于 4 级页表 [9,9,9,9]，level=3 时，累加 LEVEL_BITS[3] (即最后一级 9 位)
+        let total_levels = T::LEVEL_BITS.len();
+        let shift = T::LEVEL_BITS
+            .iter()
+            .skip(total_levels - level + 1)
+            .sum::<usize>();
         T::PAGE_SIZE << shift
     }
 
@@ -87,13 +95,31 @@ where
         if level == 0 || level > Self::PT_LEVEL {
             panic!("Invalid level: {} (valid: 1..={})", level, Self::PT_LEVEL);
         }
-        // Level 1 (叶子): shift = page_shift + 0 * INDEX_BITS (取bits [20:12])
-        // Level 2: shift = page_shift + 1 * INDEX_BITS (取bits [29:21])
-        // Level 3: shift = page_shift + 2 * INDEX_BITS (取bits [38:30])
-        // Level 4 (根): shift = page_shift + 3 * INDEX_BITS (取bits [47:39])
+
+        // 计算需要跳过的位数（页面偏移 + 低级别索引位）
+        // Level 1 (叶子): shift = page_shift（只跳过页面偏移）
+        // Level 2: shift = page_shift + LEVEL_BITS[最后一级]
+        // Level 3: shift = page_shift + LEVEL_BITS[最后一级] + LEVEL_BITS[倒数第二级]
+        // Level N: shift = page_shift + sum(LEVEL_BITS[N+1..end])
         let page_shift = T::PAGE_SIZE.trailing_zeros() as usize;
-        let shift = page_shift + (level - 1) * Self::PT_INDEX_BITS;
-        (vaddr.raw() >> shift) & Self::PT_INDEX_MASK
+        let total_levels = T::LEVEL_BITS.len();
+
+        // 累加从最后一级到当前级别之后的所有位数
+        let shift = if level == 1 {
+            page_shift
+        } else {
+            page_shift
+                + T::LEVEL_BITS
+                    .iter()
+                    .skip(total_levels - level + 1)
+                    .sum::<usize>()
+        };
+
+        // 当前级别的索引位数
+        let level_index_bits = T::LEVEL_BITS[total_levels - level];
+        let mask = (1 << level_index_bits) - 1;
+
+        (vaddr.raw() >> shift) & mask
     }
 
     /// 重建完整的虚拟地址

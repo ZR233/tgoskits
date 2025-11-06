@@ -194,7 +194,7 @@ fn test_new_l5() {
     test_high::<T4kL5, Fram4k>(
         PteImpl(0),
         Fram4k,
-        0x0000f00000000000usize.into(), // 高虚拟地址
+        0x000f000000000000usize.into(), // 高虚拟地址
         1,                              // 叶子级别
         "T4kL5",
     );
