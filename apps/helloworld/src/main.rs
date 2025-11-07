@@ -6,5 +6,5 @@ extern crate alloc;
 extern crate sparreal_rt;
 
 fn main() {
-    unsafe { somehal::arch::relocate() };
+    // unsafe { somehal::arch::relocate() };
 }

@@ -12,3 +12,12 @@ rustflags = [
   "-Clink-args=-znostart-stop-gc",
   "-Clink-args=-Tlink.x",
 ]
+
+[target.aarch64-unknown-none-softfloat]
+rustflags = [
+  "-C",
+  "relocation-model=pic",
+  "-Clink-args=-pie",
+  "-Clink-args=-znostart-stop-gc",
+  "-Clink-args=-Tlink.x",
+]

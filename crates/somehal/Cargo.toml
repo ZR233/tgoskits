@@ -13,6 +13,7 @@ version = "0.5.0"
 efi = []
 mmu = []
 uspace = ["mmu"]
+hv = []
 
 [dependencies]
 
@@ -36,6 +37,11 @@ uefi = {version = "0.36"}
 uefi-raw = "0.12"
 # uefi-raw = {path = "../uefi-raw" }
 # uefi = {path = "../uefi" }
+
+[target.'cfg(target_arch = "aarch64")'.dependencies]
+aarch64-cpu = "11"
+aarch64-cpu-ext = "0.1"
+some-serial = "0.3"
 
 [build-dependencies]
 prettyplease = "0.2"

@@ -27,12 +27,14 @@ fn main() {
 enum Arch {
     #[default]
     Loongarch64,
+    Arch64,
 }
 
 impl From<&str> for Arch {
     fn from(s: &str) -> Self {
         match s {
             "loongarch64" => Arch::Loongarch64,
+            "aarch64" => Arch::Arch64,
             _ => panic!("Unsupported architecture: {s}"),
         }
     }
@@ -52,7 +54,35 @@ impl Build {
     fn prepare(&mut self) {
         match self.arch {
             Arch::Loongarch64 => self.prepare_loongarch64(),
+            Arch::Arch64 => self.prepare_aarch64(),
         }
+    }
+
+    fn prepare_aarch64(&mut self) {
+        let ld_src = "src/arch/aarch64/link.ld";
+
+        self.kernel_load_vaddr = 0x0;
+
+        let kernel_load_vaddr = self.kernel_load_vaddr as usize;
+
+        let ld = include_str!("src/arch/aarch64/link.ld")
+            .replace("${kernel_load_vaddr}", &format!("{kernel_load_vaddr:#x}"));
+
+        println!("cargo:rerun-if-changed={ld_src}");
+        if std::env::var("CARGO_FEATURE_EFI").is_ok() {
+            println!("cargo:rustc-cfg=efi");
+        }
+        let ld_dst = self.out_dir.join(Self::LD_NAME);
+
+        fs::write(ld_dst, ld).unwrap();
+
+        let defines = quote::quote! {
+            pub const VMLINUX_LOAD_ADDRESS: usize = #kernel_load_vaddr;
+        };
+        let syntax_tree = syn::parse2(defines).unwrap();
+        let formatted = prettyplease::unparse(&syntax_tree);
+        let mut out_file = fs::File::create(self.out_dir.join("defines.rs")).unwrap();
+        out_file.write_all(formatted.as_bytes()).unwrap();
     }
 
     fn prepare_loongarch64(&mut self) {

@@ -11,6 +11,12 @@ mod console;
 #[path = "arch/loongarch64/mod.rs"]
 pub mod arch;
 
+#[cfg(target_arch = "aarch64")]
+#[path = "arch/aarch64/mod.rs"]
+pub mod arch;
+
+pub(crate) mod fdt;
+
 mod acpi;
 #[cfg(efi)]
 mod efi_stub;
