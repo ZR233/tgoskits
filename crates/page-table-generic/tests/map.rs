@@ -550,3 +550,286 @@ fn test_v_p_not_align<T: TableGeneric, A: FrameAllocator>(pte: T::P, alloc: A) {
     })
     .unwrap();
 }
+
+// ===== 取消映射测试用例 =====
+
+#[test]
+fn test_unmap_basic() {
+    let _ = env_logger::builder()
+        .is_test(true)
+        .filter_level(log::LevelFilter::Trace)
+        .try_init();
+
+    let mut pg = PageTable::<T4kL4, Fram4k>::new(Fram4k).unwrap();
+    let test_vaddr = 0x0000f00000000000usize;
+    let test_size = 0x2000; // 2个页面
+
+    // 首先创建映射
+    pg.map(&MapConfig {
+        vaddr: test_vaddr.into(),
+        paddr: 0x0000usize.into(),
+        size: test_size,
+        pte: PteImpl(0),
+        allow_huge: false,
+        flush: false,
+    })
+    .unwrap();
+
+    // 验证映射存在
+    let mapped_count = pg.walk_valid().count();
+    assert_eq!(mapped_count, 2, "应该有2个映射的页面");
+
+    // 验证地址可翻译
+    assert!(pg.is_mapped(test_vaddr.into()), "地址应该被映射");
+    assert!(pg.is_mapped((test_vaddr + 0x1000).into()), "第二个地址应该被映射");
+
+    println!("=== 取消映射前的状态 ===");
+    for p in pg.walk_valid() {
+        println!("l: {}, va: {:?}, pte: {:?}", p.level, p.vaddr, p.pte);
+    }
+
+    // 取消映射
+    pg.unmap(test_vaddr.into(), test_size).unwrap();
+
+    println!("=== 取消映射后的状态 ===");
+    for p in pg.walk_valid() {
+        println!("l: {}, va: {:?}, pte: {:?}", p.level, p.vaddr, p.pte);
+    }
+
+    // 验证映射已被取消
+    let mapped_count_after = pg.walk_valid().count();
+    assert_eq!(mapped_count_after, 0, "取消映射后应该没有有效映射");
+
+    // 验证地址不再可翻译
+    assert!(!pg.is_mapped(test_vaddr.into()), "地址应该不再被映射");
+    assert!(!pg.is_mapped((test_vaddr + 0x1000).into()), "第二个地址应该不再被映射");
+
+    println!("🎉 基本取消映射测试通过！");
+}
+
+#[test]
+fn test_unmap_huge_pages() {
+    let _ = env_logger::builder()
+        .is_test(true)
+        .filter_level(log::LevelFilter::Trace)
+        .try_init();
+
+    let mut pg = PageTable::<T4kL3, Fram4k>::new(Fram4k).unwrap();
+
+    // 创建大页映射
+    pg.map(&MapConfig {
+        vaddr: 0usize.into(),
+        paddr: 0usize.into(),
+        size: 2 * MB,
+        pte: PteImpl::user_mode(),
+        allow_huge: true,
+        flush: false,
+    })
+    .unwrap();
+
+    // 验证大页映射存在
+    let mapped_count = pg.walk_valid().count();
+    assert!(mapped_count >= 1, "应该至少有1个大页映射");
+
+    // 检查是否真的有大页
+    let has_huge = pg.walk_valid().any(|p| p.pte.is_huge());
+    assert!(has_huge, "应该有大页映射");
+
+    println!("=== 大页取消映射前的状态 ===");
+    for p in pg.walk_valid() {
+        println!(
+            "l: {}, va: {:?}, pte: {:?}, huge: {}",
+            p.level, p.vaddr, p.pte, p.pte.is_huge()
+        );
+    }
+
+    // 取消大页映射
+    pg.unmap(0usize.into(), 2 * MB).unwrap();
+
+    println!("=== 大页取消映射后的状态 ===");
+    for p in pg.walk_valid() {
+        println!(
+            "l: {}, va: {:?}, pte: {:?}, huge: {}",
+            p.level, p.vaddr, p.pte, p.pte.is_huge()
+        );
+    }
+
+    // 验证大页映射已被取消
+    let mapped_count_after = pg.walk_valid().count();
+    assert_eq!(mapped_count_after, 0, "取消映射后应该没有有效映射");
+
+    println!("🎉 大页取消映射测试通过！");
+}
+
+#[test]
+fn test_unmap_partial_mapping() {
+    let _ = env_logger::builder()
+        .is_test(true)
+        .filter_level(log::LevelFilter::Trace)
+        .try_init();
+
+    let mut pg = PageTable::<T4kL4, Fram4k>::new(Fram4k).unwrap();
+
+    // 创建多个页面的映射
+    let base_addr = 0x10000000usize;
+    let total_size = 0x5000; // 5个页面
+    pg.map(&MapConfig {
+        vaddr: base_addr.into(),
+        paddr: 0usize.into(),
+        size: total_size,
+        pte: PteImpl(0),
+        allow_huge: false,
+        flush: false,
+    })
+    .unwrap();
+
+    let initial_count = pg.walk_valid().count();
+    assert_eq!(initial_count, 5, "初始应该有5个映射的页面");
+
+    println!("=== 部分取消映射前的状态 ===");
+    for p in pg.walk_valid() {
+        println!("l: {}, va: {:?}, pte: {:?}", p.level, p.vaddr, p.pte);
+    }
+
+    // 取消中间的2个页面（从第2个页面开始）
+    let unmap_start = base_addr + 0x1000; // 第2个页面
+    let unmap_size = 0x2000; // 2个页面
+
+    pg.unmap(unmap_start.into(), unmap_size).unwrap();
+
+    println!("=== 部分取消映射后的状态 ===");
+    let mut remaining_mappings = Vec::new();
+    for p in pg.walk_valid() {
+        println!("l: {}, va: {:?}, pte: {:?}", p.level, p.vaddr, p.pte);
+        remaining_mappings.push(p.vaddr.raw());
+    }
+
+    // 验证剩余映射
+    let remaining_count = pg.walk_valid().count();
+    assert_eq!(remaining_count, 3, "应该剩余3个映射的页面");
+
+    // 验证第一个和最后两个页面仍然存在
+    assert!(pg.is_mapped(base_addr.into()), "第一个页面应该仍然存在");
+    assert!(pg.is_mapped((base_addr + 0x3000).into()), "第4个页面应该仍然存在");
+    assert!(pg.is_mapped((base_addr + 0x4000).into()), "第5个页面应该仍然存在");
+
+    // 验证被取消的页面不存在
+    assert!(!pg.is_mapped(unmap_start.into()), "被取消的页面应该不存在");
+    assert!(!pg.is_mapped((unmap_start + 0x1000).into()), "被取消的第2个页面应该不存在");
+
+    println!("🎉 部分取消映射测试通过！");
+}
+
+#[test]
+fn test_unmap_config_object() {
+    let _ = env_logger::builder()
+        .is_test(true)
+        .filter_level(log::LevelFilter::Trace)
+        .try_init();
+
+    let mut pg = PageTable::<T4kL4, Fram4k>::new(Fram4k).unwrap();
+
+    // 创建映射
+    pg.map(&MapConfig {
+        vaddr: 0x20000000usize.into(),
+        paddr: 0usize.into(),
+        size: 0x3000, // 3个页面
+        pte: PteImpl::user_mode(),
+        allow_huge: false,
+        flush: false,
+    })
+    .unwrap();
+
+    assert_eq!(pg.walk_valid().count(), 3, "应该有3个映射的页面");
+
+    // 使用配置对象取消映射
+    let unmap_config = UnmapConfig {
+        start_vaddr: 0x20000000usize.into(),
+        size: 0x3000,
+        flush: false, // 不刷新TLB，测试配置选项
+    };
+
+    pg.unmap_with_config(&unmap_config).unwrap();
+
+    assert_eq!(pg.walk_valid().count(), 0, "取消映射后应该没有有效映射");
+
+    println!("🎉 配置对象取消映射测试通过！");
+}
+
+#[test]
+fn test_unmap_error_cases() {
+    let _ = env_logger::builder()
+        .is_test(true)
+        .filter_level(log::LevelFilter::Trace)
+        .try_init();
+
+    let mut pg = PageTable::<T4kL4, Fram4k>::new(Fram4k).unwrap();
+
+    // 测试取消未映射的地址 - 应该成功（幂等操作）
+    let result = pg.unmap(0x30000000usize.into(), 0x1000);
+    assert!(result.is_ok(), "取消未映射的地址应该成功（幂等）");
+
+    // 测试大小为0
+    let result = pg.unmap(0x30000000usize.into(), 0);
+    assert!(result.is_err(), "大小为0应该返回错误");
+
+    // 测试地址不对齐
+    let result = pg.unmap(0x30000001usize.into(), 0x1000);
+    assert!(result.is_err(), "地址不对齐应该返回错误");
+
+    // 测试大小不对齐
+    let result = pg.unmap(0x30000000usize.into(), 0x1001);
+    assert!(result.is_err(), "大小不对齐应该返回错误");
+
+    // 测试地址溢出
+    let overflow_vaddr = VirtAddr::new(usize::MAX - 0xFFF);
+    let result = pg.unmap(overflow_vaddr, 0x2000);
+    assert!(result.is_err(), "地址溢出应该返回错误");
+
+    println!("🎉 错误情况测试通过！");
+}
+
+#[test]
+fn test_unmap_multi_level() {
+    let _ = env_logger::builder()
+        .is_test(true)
+        .filter_level(log::LevelFilter::Trace)
+        .try_init();
+
+    let mut pg = PageTable::<T4kL4, Fram4k>::new(Fram4k).unwrap();
+
+    // 在高地址创建多级页表映射
+    let high_vaddr = 0x0000f00000000000usize;
+    pg.map(&MapConfig {
+        vaddr: high_vaddr.into(),
+        paddr: 0usize.into(),
+        size: 0x2000, // 2个页面，需要多级页表
+        pte: PteImpl::user_mode(),
+        allow_huge: false,
+        flush: false,
+    })
+    .unwrap();
+
+    assert_eq!(pg.walk_valid().count(), 2, "应该有2个映射的页面");
+
+    // 验证映射在多级页表中
+    assert!(pg.is_mapped(high_vaddr.into()), "高地址应该被映射");
+
+    println!("=== 多级页表取消映射前的状态 ===");
+    for p in pg.walk_valid() {
+        println!("l: {}, va: {:?}, pte: {:?}", p.level, p.vaddr, p.pte);
+    }
+
+    // 取消多级页表映射
+    pg.unmap(high_vaddr.into(), 0x2000).unwrap();
+
+    println!("=== 多级页表取消映射后的状态 ===");
+    for p in pg.walk_valid() {
+        println!("l: {}, va: {:?}, pte: {:?}", p.level, p.vaddr, p.pte);
+    }
+
+    assert_eq!(pg.walk_valid().count(), 0, "取消映射后应该没有有效映射");
+    assert!(!pg.is_mapped(high_vaddr.into()), "高地址应该不再被映射");
+
+    println!("🎉 多级页表取消映射测试通过！");
+}

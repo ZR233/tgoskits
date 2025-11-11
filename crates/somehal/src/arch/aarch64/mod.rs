@@ -12,6 +12,7 @@ mod elx;
 mod entry;
 mod head;
 mod relocate;
+mod paging;
 
 use elx::*;
 

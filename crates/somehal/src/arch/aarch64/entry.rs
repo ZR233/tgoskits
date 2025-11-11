@@ -40,6 +40,8 @@ pub fn el_entry() -> ! {
 
     crate::fdt::setup_memory_map();
 
+    crate::mem::early_init();
+
     println!("Hello, Somehal on AArch64!");
 
     loop {}

@@ -488,12 +488,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
 
 [[package]]
-name = "memory_addr"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d4054cba279515fa87761b101d857333ce06391dbe8f18a11347204a7111416"
-
-[[package]]
 name = "num-align"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -791,9 +785,10 @@ dependencies = [
  "fdt-parser",
  "heapless 0.9.1",
  "log",
- "memory_addr",
+ "num-align",
  "numeric-enum-macro",
  "os-helper",
+ "page-table-generic",
  "prettyplease",
  "quote",
  "rgb",

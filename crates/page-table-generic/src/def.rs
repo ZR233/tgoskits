@@ -17,6 +17,13 @@ macro_rules! def_addr {
             }
         }
 
+        impl From<$name> for $t {
+            #[inline(always)]
+            fn from(value: $name) -> Self {
+                value.0
+            }
+        }
+
         impl $name {
             #[inline(always)]
             pub fn raw(&self) -> $t {

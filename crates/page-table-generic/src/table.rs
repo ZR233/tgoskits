@@ -3,7 +3,7 @@ use core::ops::{Deref, DerefMut};
 use crate::{
     FrameAllocator, PageTableEntry, PagingError, PagingResult, PhysAddr, TableGeneric, VirtAddr,
     frame::Frame,
-    map::{MapConfig, MapRecursiveConfig},
+    map::{MapConfig, MapRecursiveConfig, UnmapConfig, UnmapRecursiveConfig},
     walk::{PageTableWalker, WalkConfig},
 };
 
@@ -106,6 +106,91 @@ impl<T: TableGeneric, A: FrameAllocator> PageTableRef<T, A> {
             flush: config.flush,
             pte_template: config.pte,
         })?;
+
+        Ok(())
+    }
+
+    /// 取消映射虚拟地址范围
+    ///
+    /// # 参数
+    /// - `start_vaddr`: 要取消映射的起始虚拟地址
+    /// - `size`: 要取消映射的大小（字节）
+    ///
+    /// # 返回值
+    /// - `Ok(())`: 取消映射成功
+    /// - `Err(PagingError)`: 取消映射失败
+    ///
+    /// # 行为
+    /// - 清除指定虚拟地址范围内的所有页表项
+    /// - 自动回收空的子页表帧
+    /// - 支持大页和普通页面的取消映射
+    /// - 根据配置刷新TLB
+    pub fn unmap(&mut self, start_vaddr: VirtAddr, size: usize) -> PagingResult<()> {
+        // 验证输入参数
+        self.validate_unmap_params(start_vaddr, size)?;
+
+        // 检查大小溢出
+        let end_vaddr = match start_vaddr.raw().checked_add(size) {
+            Some(end) => VirtAddr::new(end),
+            None => {
+                return Err(PagingError::address_overflow(
+                    "Virtual address overflow in unmap",
+                ))
+            }
+        };
+
+        self.root.unmap_range_recursive(UnmapRecursiveConfig {
+            start_vaddr,
+            end_vaddr,
+            level: Frame::<T, A>::PT_LEVEL,
+            flush: true, // 默认刷新TLB确保一致性
+        })?;
+
+        Ok(())
+    }
+
+    /// 使用配置对象取消映射
+    pub fn unmap_with_config(&mut self, config: &UnmapConfig) -> PagingResult<()> {
+        self.validate_unmap_params(config.start_vaddr, config.size)?;
+
+        let end_vaddr = match config.start_vaddr.raw().checked_add(config.size) {
+            Some(end) => VirtAddr::new(end),
+            None => {
+                return Err(PagingError::address_overflow(
+                    "Virtual address overflow in unmap_with_config",
+                ))
+            }
+        };
+
+        self.root.unmap_range_recursive(UnmapRecursiveConfig {
+            start_vaddr: config.start_vaddr,
+            end_vaddr,
+            level: Frame::<T, A>::PT_LEVEL,
+            flush: config.flush,
+        })?;
+
+        Ok(())
+    }
+
+    /// 验证取消映射参数的有效性
+    fn validate_unmap_params(&self, start_vaddr: VirtAddr, size: usize) -> PagingResult<()> {
+        if size == 0 {
+            return Err(PagingError::invalid_size("Size cannot be zero in unmap"));
+        }
+
+        // 检查虚拟地址是否页对齐
+        if start_vaddr.raw() % T::PAGE_SIZE != 0 {
+            return Err(PagingError::alignment_error(
+                "Start virtual address not page aligned in unmap",
+            ));
+        }
+
+        // 检查大小是否页对齐
+        if size % T::PAGE_SIZE != 0 {
+            return Err(PagingError::alignment_error(
+                "Size not page aligned in unmap",
+            ));
+        }
 
         Ok(())
     }

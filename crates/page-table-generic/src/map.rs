@@ -30,6 +30,23 @@ pub struct MapRecursiveConfig<P: PageTableEntry> {
     pub pte_template: P,
 }
 
+/// 取消映射配置
+#[derive(Clone, Copy)]
+pub struct UnmapConfig {
+    pub start_vaddr: VirtAddr,
+    pub size: usize,
+    pub flush: bool,
+}
+
+/// 内部取消映射递归配置
+#[derive(Clone, Copy)]
+pub struct UnmapRecursiveConfig {
+    pub start_vaddr: VirtAddr,
+    pub end_vaddr: VirtAddr,
+    pub level: usize,
+    pub flush: bool,
+}
+
 impl<P: PageTableEntry> core::fmt::Debug for MapConfig<P> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("MapConfig")
@@ -164,5 +181,100 @@ where
         }
 
         Ok(())
+    }
+
+    /// 递归取消映射的核心实现
+    ///
+    /// 返回值：bool 表示此帧是否为空（所有页表项都无效），可以回收
+    pub fn unmap_range_recursive(&mut self, config: UnmapRecursiveConfig) -> PagingResult<bool> {
+        let mut vaddr = config.start_vaddr;
+        let mut can_reclaim = true;
+        let allocator = self.allocator.clone();
+
+        while vaddr < config.end_vaddr {
+            let index = Self::virt_to_index(vaddr, config.level);
+            let level_size = Self::level_size(config.level);
+            let remaining_size = config.end_vaddr - vaddr;
+
+            let entries = self.as_slice_mut();
+            let pte_ref = &mut entries[index];
+
+            // 检查当前页表项是否有效
+            if !pte_ref.valid() {
+                // 页表项无效，直接跳过
+                vaddr += level_size.min(remaining_size);
+                can_reclaim = false; // 有无效项，不能回收此帧
+                continue;
+            }
+
+            // 如果是叶子级别或者是大页，直接清除
+            if config.level == 1 || pte_ref.is_huge() {
+                // 清除页表项
+                pte_ref.set_valid(false);
+
+                // 刷新TLB
+                if config.flush {
+                    T::flush(Some(vaddr));
+                }
+
+                vaddr += if pte_ref.is_huge() {
+                    level_size
+                } else {
+                    T::PAGE_SIZE
+                };
+                continue;
+            }
+
+            // 中间级别：递归处理子页表
+            // 需要在修改pte_ref之前获取所需信息
+            let child_paddr = pte_ref.paddr();
+
+            // 计算当前页表条目对应的范围结束地址
+            let current_entry_end = ((vaddr.raw() / level_size) + 1) * level_size;
+            let next_level_vaddr = VirtAddr::new(current_entry_end.min(config.end_vaddr.raw()));
+
+            {
+                let mut child_frame: Frame<T, A> = Frame::from_paddr(child_paddr, allocator.clone());
+                let child_config = UnmapRecursiveConfig {
+                    start_vaddr: vaddr,
+                    end_vaddr: next_level_vaddr,
+                    level: config.level - 1,
+                    flush: config.flush,
+                };
+
+                // 递归取消子页表映射
+                let child_can_reclaim = child_frame.unmap_range_recursive(child_config)?;
+
+                if child_can_reclaim {
+                    // 子页表完全为空，可以回收
+                    // 清除指向子页表的PTE
+                    pte_ref.set_valid(false);
+                    allocator.dealloc_frame(child_paddr);
+                } else {
+                    // 子页表仍有有效映射，不能回收
+                    can_reclaim = false;
+                }
+            }
+
+            vaddr = next_level_vaddr;
+        }
+
+        // 检查此帧是否完全为空
+        if can_reclaim {
+            can_reclaim = self.is_frame_empty();
+        }
+
+        Ok(can_reclaim)
+    }
+
+    /// 检查页表帧是否全为空（所有页表项都无效）
+    fn is_frame_empty(&self) -> bool {
+        let entries = self.as_slice();
+        for pte in entries {
+            if pte.valid() {
+                return false;
+            }
+        }
+        true
     }
 }

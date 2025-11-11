@@ -2,10 +2,29 @@ use core::{cell::UnsafeCell, ops::Deref};
 
 pub use os_helper::memory::{MemoryDescriptor, MemoryType};
 
+use crate::ArchTrait;
+
+pub(crate) mod ram;
+pub(crate) mod tmp_alloc;
+
 static MEMORY_MAP: StaticCell<heapless::Vec<MemoryDescriptor, 64>> =
     StaticCell::new(Some(heapless::Vec::new()));
 
 pub const MB: usize = 1024 * 1024;
+
+pub(crate) fn early_init() {
+    ram::init();
+    crate::fdt::save_fdt();
+
+    tmp_alloc::init();
+}
+
+pub(crate) fn kernel_range() -> core::ops::Range<usize> {
+    let kernel = crate::arch::Arch::kernel_code().as_ptr_range();
+    let start = kernel.start as usize;
+    let end = ram::current() as usize;
+    start..end
+}
 
 pub fn page_size() -> usize {
     unsafe extern "C" {
@@ -41,14 +60,13 @@ impl<T> StaticCell<T> {
         }
     }
 
-    pub fn update<F>(&self, f: F)
+    pub fn update<F, R>(&self, f: F) -> R
     where
-        F: FnOnce(&mut T),
+        F: FnOnce(&mut T) -> R,
     {
         unsafe {
-            if let Some(ref mut val) = *self.value.get() {
-                f(val);
-            }
+            let val = &mut *self.value.get();
+            f(val.as_mut().unwrap())
         }
     }
 }

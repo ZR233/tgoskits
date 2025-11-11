@@ -24,3 +24,21 @@ pub fn set_cmdline() -> Option<()> {
     crate::cmdline::set_cmdline(cmdline);
     Some(())
 }
+
+pub(crate) fn save_fdt() {
+    let Some(fdt) = fdt_base() else {
+        return;
+    };
+
+    let size = fdt.total_size();
+    let slice = unsafe { core::slice::from_raw_parts(FDT_ADDR as *const u8, size) };
+
+    let fdt_buff = crate::mem::ram::Ram
+        .alloc(core::alloc::Layout::from_size_align(size, 8).unwrap())
+        .unwrap();
+
+    unsafe {
+        core::ptr::copy_nonoverlapping(slice.as_ptr(), fdt_buff, size);
+        FDT_ADDR = fdt_buff as usize;
+    }
+}

@@ -20,3 +20,4 @@ somehal = {path = "crates/somehal", version = "0.5"}
 sparreal-kernel = {path = "crates/sparreal-kernel", version = "0.13"}
 sparreal-rt = {path = "platform/sparreal-rt", version = "0.13"}
 os-helper = {path = "crates/os-helper", version = "0.1"}
+page-table-generic = {path = "crates/page-table-generic", version = "0.7"}
