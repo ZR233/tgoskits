@@ -1,7 +1,7 @@
 use core::arch::asm;
 
 use num_align::NumAlign;
-use page_table_generic::{GB, MapConfig, PageTable};
+use page_table_generic::{GB, MapConfig, PageTable, PageTableEntry};
 
 use crate::{
     arch::{
@@ -31,6 +31,10 @@ pub fn enable_mmu() -> ! {
 
     pr_range!("Kernel", start, size);
 
+    println!(
+        "Mapping kernel identity: vaddr={:#x}, paddr={:#x}, size={:#x}",
+        start, start, size
+    );
     table
         .map(&MapConfig {
             vaddr: start.into(),
@@ -80,25 +84,50 @@ pub fn enable_mmu() -> ! {
             .unwrap();
     }
 
+    println!("Page table entries analysis:");
+    for (i, pte_info) in table.walk(0.into(), usize::MAX.into()).enumerate() {
+        if i < 10 {
+            // Limit output to first 10 entries to avoid spam
+            let paddr = pte_info.pte.paddr();
+            let level = pte_info.level;
+            let vaddr = pte_info.vaddr;
+            let flags = pte_info.pte.as_flags();
+            println!(
+                "  PTE[{}]: vaddr={:#x}, paddr={:#x}, level={}, valid={}, huge={}, flags_bits={:#x}",
+                i,
+                vaddr.raw(),
+                paddr.raw(),
+                level,
+                pte_info.pte.valid(),
+                pte_info.pte.is_huge(),
+                flags.bits()
+            );
+        }
+    }
+
     let tb_addr = table.root_paddr();
     BOOT_TABLE.call_once(|| table);
     println!("Boot page table at physical address: {:#x}", tb_addr);
-    let ventry = mmu_entry as usize + kernel_vcode_offset();
-    println!("MMU Entry point at virtual address: {:#x}", ventry);
+
+    // Use physical address to avoid virtual address mapping issues
+    let mmu_entry_phys = mmu_entry as usize;
+    println!("MMU Entry point at physical address: {:#x}", mmu_entry_phys);
     setup_table_regs();
     set_table(tb_addr.into());
+
+    println!("Enabling MMU and jumping...");
     setup_sctlr();
 
-    println!("MMU Enabled.");
+    println!("MMU enabled, jumping to mmu_entry...");
 
+    // Jump to mmu_entry using physical address
     unsafe {
         asm!(
             "
-            mov x8, {0}  
-            
-            br x8       
+            mov x8, {0}
+            br x8
         ",
-            in(reg) ventry,
+            in(reg) mmu_entry_phys,
             options(noreturn)
         )
     }
