@@ -115,32 +115,7 @@ pub fn enable_mmu() -> ! {
     setup_table_regs();
     set_table(tb_addr.into());
 
-    println!("Enabling MMU and jumping...");
-
-    // Flush all caches before enabling MMU
-    unsafe {
-        asm!(
-            "
-            // Clean data cache to point of coherence
-            dc civac, x0  // Clean and invalidate by virtual address to point of coherence
-            dsb ish
-            // Invalidate instruction cache
-            ic iallu
-            dsb ish
-            isb
-        ",
-            in("x0") mmu_entry_phys,
-        );
-    }
-
     setup_sctlr();
-
-    // Add barrier after MMU enable
-    unsafe {
-        asm!("dsb ish; isb");
-    }
-
-    println!("MMU enabled, jumping to mmu_entry...");
 
     // Jump to mmu_entry using physical address
     unsafe {

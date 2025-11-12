@@ -8,3 +8,4 @@
 .claude
 .serena
 *-schema.json
+*.log
