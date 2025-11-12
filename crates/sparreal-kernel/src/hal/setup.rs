@@ -1,4 +1,8 @@
-pub fn setup_allocator() {}
+use os_helper::memory::MemoryDescriptor;
+
+pub fn setup_allocator(regions: &[MemoryDescriptor]) {
+    crate::os::mem::init_heap(regions);
+}
 
 pub fn setup() -> ! {
     unsafe extern "C" {

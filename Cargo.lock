@@ -938,6 +938,7 @@ version = "0.13.0"
 dependencies = [
  "buddy_system_allocator",
  "log",
+ "os-helper",
  "sparreal-macros",
  "spin 0.10.0",
  "trait-ffi",

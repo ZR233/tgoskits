@@ -22,7 +22,7 @@ mod consts;
 mod efi_stub;
 mod elf;
 pub(crate) mod fdt;
-mod mem;
+pub mod mem;
 
 pub use somehal_macros::{entry, secondary_entry};
 
