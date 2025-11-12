@@ -13,27 +13,27 @@ macro_rules! def_addr {
                 Self(val, core::marker::PhantomData)
             }
 
-            pub fn raw(self) -> $t {
+            pub fn raw(&self) -> $t {
                 self.0
             }
 
-            pub fn align_down(self, align: usize) -> Self {
+            pub fn align_down(&self, align: usize) -> Self {
                 (align_down(self.0 as _, align) as $t).into()
             }
 
-            pub fn align_up(self, align: usize) -> Self {
+            pub fn align_up(&self, align: usize) -> Self {
                 (align_up(self.0 as _, align) as $t).into()
             }
 
-            pub fn align_offset(self, align: usize) -> usize {
+            pub fn align_offset(&self, align: usize) -> usize {
                 align_offset(self.0 as _, align)
             }
 
-            pub fn is_aligned_4k(self) -> bool {
+            pub fn is_aligned_4k(&self) -> bool {
                 self.is_aligned_to(0x1000)
             }
 
-            pub fn is_aligned_to(self, align: usize) -> bool {
+            pub fn is_aligned_to(&self, align: usize) -> bool {
                 self.align_offset(align) == 0
             }
         }
@@ -92,7 +92,7 @@ pub struct CRange<T: Debug + Sized + Clone + Copy> {
 }
 
 impl<T: Debug + Sized + Clone + Copy> CRange<T> {
-    pub fn to_range(&self) -> Range<T> {
+    pub fn to_range(self) -> Range<T> {
         self.start..self.end
     }
 }
