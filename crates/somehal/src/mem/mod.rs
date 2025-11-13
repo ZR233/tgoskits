@@ -49,7 +49,11 @@ pub fn ioremap(paddr: usize, size: usize) -> *mut u8 {
 }
 
 pub(crate) fn _fixmap_io(paddr: usize) -> *mut u8 {
-    crate::arch::Arch::_fixmap_io(paddr)
+    if is_mmu_enabled() {
+        crate::arch::Arch::_io(paddr)
+    } else {
+        paddr as *mut u8
+    }
 }
 
 pub(crate) fn early_init() {

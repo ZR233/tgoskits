@@ -28,7 +28,7 @@ impl ArchTrait for Arch {
 
     fn post_allocator() {}
 
-    fn _pa(vaddr: *mut u8) -> usize {
+    fn _pa(vaddr: *const u8) -> usize {
         addrspace::to_phys(vaddr as usize)
     }
 
@@ -37,10 +37,10 @@ impl ArchTrait for Arch {
     }
 
     fn ioremap(paddr: usize, _size: usize) -> *mut u8 {
-        if is_mmu_enabled() {
-            addrspace::to_uncache(paddr) as *mut u8
-        } else {
-            paddr as *mut u8
-        }
+        Self::_io(paddr)
+    }
+
+    fn _io(paddr: usize) -> *mut u8 {
+        addrspace::to_uncache(paddr) as *mut u8
     }
 }

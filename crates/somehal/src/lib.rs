@@ -35,7 +35,7 @@ trait ArchTrait {
 
     fn _pa(vaddr: *const u8) -> usize;
     fn _va(paddr: usize) -> *mut u8;
-    fn _fixmap_io(paddr: usize) -> *mut u8;
+    fn _io(paddr: usize) -> *mut u8;
     fn ioremap(paddr: usize, size: usize) -> *mut u8;
 }
 

@@ -47,11 +47,7 @@ impl ArchTrait for Arch {
         }
     }
 
-    fn _fixmap_io(paddr: usize) -> *mut u8 {
-        if crate::mem::is_mmu_enabled() {
-            Self::_va(paddr)
-        } else {
-            paddr as *mut u8
-        }
+    fn _io(paddr: usize) -> *mut u8 {
+        Self::_va(paddr)
     }
 }
