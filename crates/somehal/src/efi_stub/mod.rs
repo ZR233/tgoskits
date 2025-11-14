@@ -1,4 +1,4 @@
-use core::{fmt::Write, ptr::null, sync::atomic::AtomicBool};
+use core::{ffi::c_void, fmt::Write, ptr::null, sync::atomic::AtomicBool};
 
 use uefi::{
     Result,
@@ -20,6 +20,8 @@ use crate::{
 mod acpi_handle;
 mod earlycon;
 pub mod pe;
+mod system;
+mod table;
 
 pub(crate) use earlycon::acpi_setup_earlycon;
 
@@ -35,6 +37,9 @@ pub unsafe extern "C" fn efi_pe_entry(
         relocate();
         ::uefi::boot::set_image_handle(image_handle);
         ::uefi::table::set_system_table(system_table);
+        table::set_system_table_ptr(system_table as usize as _);
+
+        // crate::efi_stub::system::stdout().write_str("test 我要 123\r\n");
 
         crate::console::set_out(&UefiPrinter);
 
@@ -60,7 +65,7 @@ pub unsafe extern "C" fn efi_pe_entry(
             }
         }
 
-        crate::arch::entry::kernel_entry(1, null(), system_table as *const core::ffi::c_void);
+        crate::arch::entry::kernel_entry(1, null(), system_table as *const c_void);
     }
 }
 
@@ -76,7 +81,7 @@ fn efi_main() -> Result {
     match img.load_options_as_cstr16() {
         Ok(cmdline) => {
             println!("Kernel command line: {}", cmdline);
-            system::with_stdout(|stdout| {
+            uefi::system::with_stdout(|stdout| {
                 let _ = cmdline.as_str_in_buf(stdout);
             });
         }
@@ -97,7 +102,7 @@ impl crate::console::Con for UefiPrinter {
         if !UEFI_SERVICE_OK.load(core::sync::atomic::Ordering::Relaxed) {
             return;
         }
-        system::with_stdout(|stdout| {
+        ::uefi::system::with_stdout(|stdout| {
             let _ = stdout.write_str(s);
         });
     }

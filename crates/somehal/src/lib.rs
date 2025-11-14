@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![feature(iter_next_chunk)]
 
 #[macro_use]
 extern crate alloc;
