@@ -1,0 +1,1 @@
+ostool run -c build-config/loongarch64.toml qemu -q ./apps/helloworld/qemu-la64.toml
