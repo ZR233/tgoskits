@@ -42,12 +42,11 @@ impl IrqRawSpinlock {
         // 自旋获取锁，使用退避策略优化性能
         let mut spin_count = 0;
 
-        while self.locked.compare_exchange_weak(
-            false,
-            true,
-            Ordering::Acquire,
-            Ordering::Relaxed,
-        ).is_err() {
+        while self
+            .locked
+            .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_err()
+        {
             // 提示CPU我们正在自旋等待
             core::hint::spin_loop();
 
@@ -71,12 +70,9 @@ impl IrqRawSpinlock {
     #[inline]
     pub fn try_lock(&self) -> bool {
         // 尝试获取锁
-        self.locked.compare_exchange(
-            false,
-            true,
-            Ordering::Acquire,
-            Ordering::Relaxed,
-        ).is_ok()
+        self.locked
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_ok()
     }
 
     /// 释放锁
@@ -192,11 +188,8 @@ impl<T> IrqSpinlock<T> {
     /// * `None` - 锁已被占用时，中断状态不变
     #[inline]
     pub fn try_lock(&self) -> Option<IrqMutexGuard<T>> {
-        // 尝试获取锁
+        let irq_guard = crate::hal::irq::NoIrqGuard::new();
         if self.raw.try_lock() {
-            // 成功获取锁，立即禁用中断
-            let irq_guard = crate::hal::irq::NoIrqGuard::new();
-
             Some(IrqMutexGuard {
                 lock: self,
                 _irq_guard: irq_guard,
@@ -224,9 +217,7 @@ impl<T> IrqSpinlock<T> {
     /// 此方法不提供同步保证，调用者需要确保没有其他地方在并发访问数据
     #[inline]
     pub unsafe fn get(&self) -> &T {
-        unsafe {
-            &*self.data.get()
-        }
+        unsafe { &*self.data.get() }
     }
 
     /// 获取内部数据的可变引用
@@ -236,9 +227,7 @@ impl<T> IrqSpinlock<T> {
     /// 此方法不提供同步保证，调用者需要确保没有其他地方在并发访问数据
     #[inline]
     pub unsafe fn get_mut(&mut self) -> &mut T {
-        unsafe {
-            &mut *self.data.get()
-        }
+        unsafe { &mut *self.data.get() }
     }
 
     /// 消费IrqSpinlock并返回内部数据
@@ -279,18 +268,14 @@ impl<T> Deref for IrqMutexGuard<'_, T> {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        unsafe {
-            &*self.lock.data.get()
-        }
+        unsafe { &*self.lock.data.get() }
     }
 }
 
 impl<T> DerefMut for IrqMutexGuard<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe {
-            &mut *self.lock.data.get()
-        }
+        unsafe { &mut *self.lock.data.get() }
     }
 }
 
