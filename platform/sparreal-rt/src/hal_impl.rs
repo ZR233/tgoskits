@@ -11,6 +11,10 @@ impl Memory for MemoryImpl {
     fn phys_to_virt(phys: usize) -> *mut u8 {
         somehal::mem::phys_to_virt(phys as _)
     }
+
+    fn page_size() -> usize {
+        somehal::mem::page_size()
+    }
 }
 }
 

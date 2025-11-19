@@ -8,8 +8,6 @@ use uefi_raw::table::system::SystemTable;
 
 use crate::{acpi::set_rsdp, arch::relocate};
 
-pub use uefi_raw::table::boot::{MemoryDescriptor, MemoryType};
-
 mod acpi_handle;
 pub(crate) mod memmap;
 pub mod pe;
@@ -45,7 +43,7 @@ pub unsafe extern "C" fn efi_pe_entry(
         let mem_map = boot::exit_boot_services(None);
 
         println!("Exited boot services, owned memory map obtained.");
-        memmap::setup_memory_map(mem_map.entries());
+        memmap::setup_memory_map(mem_map.entries()).unwrap();
 
         crate::arch::entry::kernel_entry(1, null(), system_table as *const c_void);
     }

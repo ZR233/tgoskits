@@ -5,6 +5,7 @@ pub trait Memory {
     /// The caller must ensure that the provided virtual address is valid and mapped.
     unsafe fn virt_to_phys(virt: *mut u8) -> usize;
     fn phys_to_virt(phys: usize) -> *mut u8;
+    fn page_size() -> usize;
 }
 
 #[trait_ffi::def_extern_trait(not_def_impl, mod_path = "hal::al")]
