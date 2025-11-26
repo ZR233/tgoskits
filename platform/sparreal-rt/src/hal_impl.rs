@@ -10,6 +10,12 @@ impl Platform for InitImpl {
     fn shutdown() -> ! {
         somehal::power::shutdown()
     }
+    fn irq_is_enabled(irq: usize) -> bool {
+        todo!()
+    }
+    fn irq_set_enabled(irq: usize, enabled: bool) {
+        todo!()
+    }
 }
 }
 
@@ -43,16 +49,17 @@ impl Cpu for CpuImpl {
         todo!()
     }
 
-    fn irq_is_enabled() -> bool {
-        false
+    fn irq_all_is_enabled() -> bool {
+        somehal::irq::irq_all_is_enabled()
     }
 
-    fn irq_set_enabled(enabled:bool) {
-
+    fn irq_all_set_enable(enable: bool) {
+        somehal::irq::irq_all_set_enable(enable);
     }
 
-    fn register_timer_handler(handler: fn()) {
-        somehal::irq::register_timer_handler(handler);
+
+    fn timer_irq() -> usize {
+        somehal::irq::timer_irq()
     }
 }
 }
@@ -63,11 +70,15 @@ impl_trait! {
 impl Console for ConsoleImpl {
     fn early_write(bytes: &[u8]) -> usize {
         somehal::console::_write_bytes(bytes)
-        // bytes.len()
     }
 
     fn early_read() -> Option<u8> {
         None
     }
 }
+}
+
+#[unsafe(no_mangle)]
+pub extern "Rust" fn _somehal_handle_irq(hwirq: usize) {
+    handle_irq(hwirq);
 }

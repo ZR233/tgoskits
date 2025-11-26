@@ -34,20 +34,6 @@ macro_rules! restore_t0t1 {
     };
 }
 
-macro_rules! st_d {
-    ($rd:expr, $rj:expr, $off:expr) => {
-        concat!(
-            "st.d    ",
-            stringify!($rd),
-            ", ",
-            stringify!($rj),
-            ", ",
-            stringify!($off),
-            " * 8"
-        )
-    };
-}
-
 macro_rules! op_general_regs {
     ($op:expr) => {
         concat!(

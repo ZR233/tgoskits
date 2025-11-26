@@ -10,9 +10,10 @@ mod register;
 mod relocate;
 mod trap;
 
+use loongArch64::register::crmd;
 pub use relocate::relocate;
 
-use crate::ArchTrait;
+use crate::{ArchTrait, arch::register::irq::TI};
 
 pub struct Arch;
 
@@ -45,13 +46,21 @@ impl ArchTrait for Arch {
         trap::per_cpu_trap_init(is_primary);
     }
 
-    fn register_timer_handler(handler: fn()) {
-        trap::register_timer_handler(handler);
+    fn timer_irq() -> usize {
+        TI as _
     }
 
     fn shutdown() -> ! {
         loop {
             unsafe { loongArch64::asm::idle() };
         }
+    }
+
+    fn irq_all_is_enabled() -> bool {
+        crmd::read().ie()
+    }
+
+    fn irq_all_set_enable(enable: bool) {
+        crmd::set_ie(enable);
     }
 }

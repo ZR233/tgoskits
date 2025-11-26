@@ -1,4 +1,4 @@
-use crate::hal::al;
+use crate::hal::{al, timer};
 
 pub fn start_kernel() -> ! {
     crate::os::logger::init();
@@ -6,6 +6,9 @@ pub fn start_kernel() -> ! {
 
     crate::os::mem::init_heap(&al::memory::memory_map());
     al::platform::post_allocator();
+    timer::init();
+
+    al::cpu::irq_all_set_enable(true);
 
     unsafe extern "C" {
         fn __sparreal_main();

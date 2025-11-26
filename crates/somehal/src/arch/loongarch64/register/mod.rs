@@ -1,5 +1,4 @@
-
-pub mod irq{
+pub mod irq {
     pub const SWI0: u32 = 0;
     pub const SWI1: u32 = 1;
     pub const HWI0: u32 = 2;
@@ -17,7 +16,7 @@ pub mod irq{
     pub const AVEC: u32 = 14;
 }
 
-pub mod csr{
+pub mod csr {
     pub const PRMD: usize = 0x1;
     pub const ERA: usize = 0x6;
 }

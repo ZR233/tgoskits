@@ -1,13 +1,9 @@
-use core::{arch::naked_asm, mem::offset_of, ops::Deref};
+use core::{arch::naked_asm, mem::offset_of};
 
 use loongArch64::register::{ecfg, eentry, estat, tlbrentry};
 
 use crate::{
-    arch::{
-        cache::local_flush_icache_range,
-        context::TrapFrame,
-        register::{csr, irq::TI},
-    },
+    arch::{cache::local_flush_icache_range, context::TrapFrame, register::csr},
     mem::StaticCell,
 };
 
@@ -136,30 +132,10 @@ fn do_vint(_tf: &mut TrapFrame) {
         // 清除已处理的位
         estat &= !(1 << (hwirq - 1));
 
-        handle_irq(hwirq - 1);
-    }
-}
-
-fn handle_irq(hwirq: u32) {
-    // 处理中断的具体实现
-
-    match hwirq {
-        TI => {
-            handle_timer_interrupt();
+        unsafe extern "Rust" {
+            fn _somehal_handle_irq(hwirq: usize);
         }
-        _ => {
-            // 处理其他中断
-        }
-    }
-}
 
-static TI_HANDLER: StaticCell<fn()> = StaticCell::new(None);
-pub fn register_timer_handler(handler: fn()) {
-    TI_HANDLER.set(handler);
-}
-fn handle_timer_interrupt() {
-    let h = TI_HANDLER
-        .try_deref()
-        .expect("Timer handler not registered");
-    (h)();
+        unsafe { _somehal_handle_irq((hwirq - 1) as _) };
+    }
 }

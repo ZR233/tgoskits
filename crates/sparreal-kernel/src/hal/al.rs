@@ -15,15 +15,17 @@ pub trait Memory {
 #[trait_ffi::def_extern_trait(not_def_impl, mod_path = "hal::al")]
 pub trait Platform {
     fn post_allocator();
+    fn irq_is_enabled(irq: usize) -> bool;
+    fn irq_set_enabled(irq: usize, enabled: bool);
     fn shutdown() -> !;
 }
 
 #[trait_ffi::def_extern_trait(not_def_impl, mod_path = "hal::al")]
 pub trait Cpu {
     fn current_cpu_id() -> usize;
-    fn irq_is_enabled() -> bool;
-    fn irq_set_enabled(enabled: bool);
-    fn register_timer_handler(handler: fn());
+    fn irq_all_is_enabled() -> bool;
+    fn irq_all_set_enable(enabled: bool);
+    fn timer_irq() -> usize;
 }
 
 #[trait_ffi::def_extern_trait(mod_path = "hal::al", not_def_impl)]
@@ -31,3 +33,5 @@ pub trait Console {
     fn early_write(bytes: &[u8]) -> usize;
     fn early_read() -> Option<u8>;
 }
+
+pub fn handle_irq(irq_number: usize) {}

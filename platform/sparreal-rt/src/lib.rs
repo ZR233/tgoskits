@@ -13,3 +13,4 @@ fn main() -> ! {
     somehal::println!("Starting Sparreal OS kernel...");
     sparreal_kernel::hal::setup::start_kernel()
 }
+
