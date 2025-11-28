@@ -12,10 +12,10 @@ impl Platform for InitImpl {
         somehal::power::shutdown()
     }
     fn irq_is_enabled(irq: usize) -> bool {
-        somehal::irq::irq_all_is_enabled()
+        somehal::irq::irq_is_enabled(irq)
     }
-    fn irq_set_enabled(irq: usize, enabled: bool) {
-        // TODO: implement
+    fn irq_set_enabled(irq: usize, enable: bool) {
+        somehal::irq::irq_set_enable(irq, enable);
     }
 }
 }
