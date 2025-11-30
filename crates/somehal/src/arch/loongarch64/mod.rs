@@ -24,6 +24,8 @@ const MIN_TICKS: usize = 4;
 pub struct Arch;
 
 impl ArchTrait for Arch {
+    type PageTable = paging::Generic;
+
     fn kernel_code() -> &'static [u8] {
         let start = ext_sym_addr!(_head);
         let end = ext_sym_addr!(__kernel_code_end);
@@ -152,5 +154,6 @@ impl ArchTrait for Arch {
     fn setup_paging() {
         paging::setup();
     }
+    
 
 }

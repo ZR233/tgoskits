@@ -35,11 +35,14 @@ pub mod mem;
 pub mod power;
 pub mod timer;
 
+pub use page_table_generic::*;
 pub use somehal_macros::{entry, secondary_entry};
 
 use crate::irq::SoftIrqId;
 
 trait ArchTrait {
+    type PageTable: TableGeneric;
+
     fn kernel_code() -> &'static [u8];
     fn post_allocator();
 
