@@ -1,1 +1,1 @@
-ostool run -c build-config/loongarch64.toml qemu -q ./apps/helloworld/qemu-la64.toml
+ostool run -c ./test-suit/timer/loongarch64.toml qemu -q ./test-suit/timer/qemu-la64.toml
