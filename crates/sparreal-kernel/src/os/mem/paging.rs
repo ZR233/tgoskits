@@ -30,7 +30,7 @@ fn map_regions(pt: &mut Box<dyn PageTable>) {
         match region.memory_type {
             MemoryType::Mmio => {
                 debug!(
-                    "Mapping mmio `{:<16}`: [{:>#016x}, {:>#016x}) {}",
+                    "Mapping `{:<16}`: [0x{:>016x}, 0x{:>016x}) {}",
                     region.name,
                     phys.raw(),
                     (phys.raw() + region.size_in_bytes),
@@ -46,7 +46,7 @@ fn map_regions(pt: &mut Box<dyn PageTable>) {
                     attrs: MemAttributes::Normal,
                 };
                 debug!(
-                    "Mapping `{:<16}`: [{:>#016x}, {:>#016x}) -> [{:>#016x}, {:>#016x}) {} ({:#.2})",
+                    "Mapping `{:<16}`: [0x{:>016x}, 0x{:>016x}) -> [0x{:>016x}, 0x{:>016x}) {} ({:#.2})",
                     region.name,
                     virt.raw(),
                     (virt.raw() + region.size_in_bytes),
