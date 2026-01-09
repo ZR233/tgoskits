@@ -1,6 +1,9 @@
 use uefi::boot::{MemoryDescriptor, MemoryType};
 
-use crate::{consts::PAGE_SIZE, mem::{add_memory_descriptor, page_size}};
+use crate::{
+    consts::PAGE_SIZE,
+    mem::{add_memory_descriptor, page_size},
+};
 
 pub fn setup_memory_map<'a>(
     mems: impl Iterator<Item = &'a MemoryDescriptor>,

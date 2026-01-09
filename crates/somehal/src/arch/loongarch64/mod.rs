@@ -20,61 +20,16 @@ pub use paging::Entry as Pte;
 pub use relocate::relocate;
 pub use relocate::relocate_kernel_to_vm_code;
 
-use crate::{ArchTrait, PageTableOp, arch::register::irq::TI, irq::SoftIrqId};
+use crate::{ArchTrait, arch::register::irq::TI, irq::IrqId, mem::PageTableInfo};
 
 const MIN_TICKS: usize = 4;
-
-// pub type PT<A> = page_table_generic::PageTable<paging::Generic, A>;
-
-pub struct PT<A: FrameAllocator> {
-    inner: page_table_generic::PageTable<paging::Generic, A>,
-}
-
-impl<A: FrameAllocator> PageTableOp<A> for PT<A> {
-    fn map(
-        &mut self,
-        config: &MapConfig<paging::Entry>,
-    ) -> Result<(), page_table_generic::PagingError> {
-        self.inner.map(config)
-    }
-
-    fn unmap(
-        &mut self,
-        virt_start: page_table_generic::VirtAddr,
-        size: usize,
-    ) -> Result<(), page_table_generic::PagingError> {
-        self.inner.unmap(virt_start, size)
-    }
-
-    fn ioremap(
-        &mut self,
-        phys_start: page_table_generic::PhysAddr,
-        _size: usize,
-        _flush: bool,
-    ) -> Result<page_table_generic::VirtAddr, page_table_generic::PagingError> {
-        let virt = Arch::_io(phys_start.raw());
-        debug!("ioremap direct {:#x} -> {:#p}", phys_start.raw(), virt);
-        Ok(virt.into())
-    }
-
-    fn root_paddr(&self) -> page_table_generic::PhysAddr {
-        self.inner.root_paddr()
-    }
-
-    fn iounmap(
-        &mut self,
-        _io_addr: page_table_generic::VirtAddr,
-        _size: usize,
-    ) -> Result<(), page_table_generic::PagingError> {
-        // 对于直接映射的 I/O 内存，不需要实际操作
-        Ok(())
-    }
-}
 
 pub struct Arch;
 
 impl ArchTrait for Arch {
-    type PT<A: FrameAllocator> = PT<A>;
+    type P = paging::Generic;
+
+    const PAGE_OFFSET: usize = addrspace::PAGE_OFFSET;
 
     fn kernel_code() -> &'static [u8] {
         let start = ext_sym_addr!(_head);
@@ -84,28 +39,12 @@ impl ArchTrait for Arch {
 
     fn post_allocator() {}
 
-    fn _pa(vaddr: *const u8) -> usize {
-        addrspace::to_phys(vaddr as usize)
-    }
-
-    fn _va(paddr: usize) -> *mut u8 {
-        addrspace::to_cache(paddr) as *mut u8
-    }
-
-    fn ioremap(paddr: usize, _size: usize) -> *mut u8 {
-        Self::_io(paddr)
-    }
-
-    fn _io(paddr: usize) -> *mut u8 {
-        addrspace::to_uncache(paddr) as *mut u8
-    }
-
     fn per_cpu_trap_init(is_primary: bool) {
         trap::per_cpu_trap_init(is_primary);
     }
 
-    fn systimer_irq() -> usize {
-        TI as _
+    fn systimer_irq() -> IrqId {
+        IrqId::new(TI as usize)
     }
 
     fn systimer_enable() {
@@ -166,7 +105,7 @@ impl ArchTrait for Arch {
         crmd::set_ie(enable);
     }
 
-    fn irq_is_enabled(irq: SoftIrqId) -> bool {
+    fn irq_is_enabled(irq: IrqId) -> bool {
         use loongArch64::register::ecfg::{self, LineBasedInterrupt};
 
         match irq.kind() {
@@ -185,7 +124,7 @@ impl ArchTrait for Arch {
         }
     }
 
-    fn irq_set_enable(irq: SoftIrqId, enable: bool) {
+    fn irq_set_enable(irq: IrqId, enable: bool) {
         use loongArch64::register::ecfg::{self, LineBasedInterrupt};
 
         match irq.kind() {
@@ -205,12 +144,6 @@ impl ArchTrait for Arch {
                 // 外部中断需要通过级联中断控制器来设置
                 // 目前暂不支持
             }
-        }
-    }
-
-    fn create_page_table<A: FrameAllocator>(allocator: A) -> Self::PT<A> {
-        PT {
-            inner: PageTable::<paging::Generic, A>::new(allocator).unwrap(),
         }
     }
 
@@ -237,14 +170,40 @@ impl ArchTrait for Arch {
         }
     }
 
+    fn virt_to_phys(vaddr: *const u8) -> usize {
+        addrspace::to_phys(vaddr as usize)
+    }
+
+    fn is_mmu_enabled() -> bool {
+        // LoongArch64 启动后 MMU 始终启用
+        true
+    }
+
+    fn user_page_table() -> PageTableInfo {
+        PageTableInfo {
+            addr: paging::read_csr_pgdl() as usize,
+            asid: paging::read_csr_asid() as usize,
+        }
+    }
+
+    fn set_user_page_table(val: PageTableInfo) {
+        // 设置用户页表基地址到 PGDL (低地址空间)
+        paging::write_csr_pgdl(val.addr as u64);
+        // 设置 ASID
+        paging::write_csr_asid(val.asid as u64);
+        // 刷新 TLB
+        paging::local_flush_tlb_all();
+        // 添加指令同步屏障
+        unsafe {
+            core::arch::asm!("dbar 0", options(nomem, nostack));
+            core::arch::asm!("ibar 0", options(nomem, nostack));
+        }
+    }
+
     fn enable_paging() {
         // LoongArch64 在启动时已经启用了分页
         // 这里只需要确保 TLB 已经刷新
         paging::local_flush_tlb_all();
-    }
-
-    fn relocate_kernel_to_vm_code() -> ! {
-        paging::relocate_kernel_to_vm_code()
     }
 }
 

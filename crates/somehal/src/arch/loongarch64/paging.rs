@@ -828,6 +828,12 @@ impl Entry {
 }
 
 impl PageTableEntry for Entry {
+    fn new_valid() -> Self {
+        let mut entry = Self::empty();
+        entry.set_valid(true);
+        entry
+    }
+
     fn valid(&self) -> bool {
         self.is_valid()
     }
@@ -855,63 +861,76 @@ impl PageTableEntry for Entry {
         self.set_huge(b);
     }
 
-    fn set_mem_config(&mut self, config: page_table_generic::MemConfig) {
-        use page_table_generic::{AccessFlags, MemAttributes};
-
-        // 设置访问权限
-        let writable = config.access.contains(AccessFlags::WRITE);
-        let executable = config.access.contains(AccessFlags::EXECUTE);
-
-        self.set_writable(writable);
-        if writable {
-            self.set_dirty(true);
-        }
-        self.set_no_exec(!executable);
-
-        // 设置缓存属性
-        match config.attrs {
-            MemAttributes::Normal => {
-                // CC = Coherent Cached
-                self.set_cache_attr(1);
-            }
-            MemAttributes::Device => {
-                // SUC = Strongly-ordered UnCached
-                self.set_cache_attr(0);
-            }
-            MemAttributes::Uncached => {
-                // WUC = Weakly-ordered UnCached
-                self.set_cache_attr(2);
-            }
-        }
+    fn is_writable(&self) -> bool {
+        self.is_writable()
     }
 
-    fn mem_config(&self) -> page_table_generic::MemConfig {
-        use page_table_generic::{AccessFlags, MemAttributes};
+    fn set_writable(&mut self, b: bool) {
+        self.set_writable(b)
+    }
 
-        let mut access = AccessFlags::READ;
+    fn is_executable(&self) -> bool {
+        !self.is_no_exec()
+    }
 
-        if self.is_writable() {
-            access |= AccessFlags::WRITE;
-        }
+    fn set_executable(&mut self, b: bool) {
+        self.set_no_exec(!b)
+    }
 
-        if !self.is_no_exec() {
-            access |= AccessFlags::EXECUTE;
-        }
+    fn is_lower_access(&self) -> bool {
+        self.plv() == 3
+    }
 
-        // 根据 PLV 判断是否为用户态页面
-        if self.plv() == 3 {
-            access |= AccessFlags::LOWER;
-        }
+    fn set_lower_access(&mut self, b: bool) {
+        self.set_plv(if b { 3 } else { 0 })
+    }
 
-        // 根据缓存属性确定内存类型
-        let attrs = match self.cache_attr() {
+    fn is_global(&self) -> bool {
+        self.is_global()
+    }
+
+    fn set_global(&mut self, b: bool) {
+        self.set_global(b)
+    }
+
+    fn is_accessed(&self) -> bool {
+        // LoongArch64 无硬件 accessed 位
+        false
+    }
+
+    fn set_accessed(&mut self, _b: bool) {
+        // LoongArch64 不支持软件 accessed 位
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.is_dirty()
+    }
+
+    fn set_dirty(&mut self, b: bool) {
+        self.set_dirty(b)
+    }
+
+    fn mem_attr(&self) -> page_table_generic::MemAttributes {
+        use page_table_generic::MemAttributes;
+
+        match self.cache_attr() {
             0 => MemAttributes::Device,   // SUC
             1 => MemAttributes::Normal,   // CC
             2 => MemAttributes::Uncached, // WUC
-            _ => MemAttributes::Normal,   // 默认为 Normal
-        };
+            _ => MemAttributes::Normal,
+        }
+    }
 
-        page_table_generic::MemConfig { access, attrs }
+    fn set_mem_attr(&mut self, attr: page_table_generic::MemAttributes) {
+        use page_table_generic::MemAttributes;
+
+        let cache = match attr {
+            MemAttributes::Device => 0,   // SUC
+            MemAttributes::Normal => 1,   // CC
+            MemAttributes::Uncached => 2, // WUC
+            MemAttributes::PerCpu => 1,   // PerCpu 使用 Normal 缓存策略
+        };
+        self.set_cache_attr(cache);
     }
 }
 
@@ -990,7 +1009,8 @@ pub fn cpu_has_ptw() -> bool {
 }
 
 pub fn relocate_kernel_to_vm_code() -> ! {
-    crate::after_finally_relocate()
+    panic!()
+    // crate::after_finally_relocate()
     // let mut table = page_table_generic::PageTable::<Generic, _>::new(Ram).unwrap();
     // let table_addr = table.root_paddr().raw();
     // let kernel_start_phys = virt_to_phys(Arch::kernel_code().as_ptr());
