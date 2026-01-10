@@ -34,19 +34,20 @@ pub fn vm_load_offset() -> isize {
     unsafe { VM_LOAD_OFFSET }
 }
 
-pub fn page_offset() -> usize {
-    crate::arch::Arch::PAGE_OFFSET
+/// RAM 物理地址应当转换为的内核虚拟地址
+pub fn __va(paddr: usize) -> *mut u8 {
+    crate::arch::Arch::_va(paddr)
 }
 
-/// RAM 物理地址转换为内核虚拟地址
-pub(crate) fn __va(paddr: usize) -> *mut u8 {
-    (paddr + crate::arch::Arch::PAGE_OFFSET) as *mut u8
+/// IO 物理地址应当转换为的内核虚拟地址
+pub fn __io(paddr: usize) -> *mut u8 {
+    crate::arch::Arch::_io(paddr)
 }
 
-/// 内核虚拟地址转换为 RAM 物理地址
-pub(crate) fn __pa(vaddr: *const u8) -> usize {
-    vaddr as usize - crate::arch::Arch::PAGE_OFFSET
-}
+// /// 内核虚拟地址转换为 RAM 物理地址
+// pub(crate) fn __pa(vaddr: *const u8) -> usize {
+
+// }
 
 /// kernel image 物理地址转换为内核虚拟地址
 pub(crate) fn __kimage_va(paddr: usize) -> *mut u8 {
@@ -61,6 +62,7 @@ pub fn enable_paging() {
     crate::arch::Arch::enable_paging();
 }
 
+/// 物理RAM实际转换为的内核虚拟地址
 pub fn phys_to_virt(paddr: usize) -> *mut u8 {
     if mmu::is_mmu_enabled() {
         if kimage_range().contains(&paddr) {
@@ -80,11 +82,10 @@ pub fn virt_to_phys(vaddr: *const u8) -> usize {
 
 pub(crate) fn _fixmap_io(paddr: usize) -> *mut u8 {
     if mmu::is_mmu_enabled() {
-        __va(paddr)
+        __io(paddr)
     } else {
         paddr as *mut u8
     }
-    // paddr as *mut u8
 }
 
 pub(crate) fn early_init() {

@@ -18,13 +18,13 @@ pub(crate) fn set_rsdp(addr: *const c_void) {
     }
 }
 
+#[allow(unused)]
 /// 获取RSDP地址
 fn rsdp() -> Option<NonNull<u8>> {
     let rsdp = unsafe { RSDP };
     if rsdp == 0 {
         return None;
     }
-
     let ptr = phys_to_virt(rsdp);
 
     NonNull::new(ptr)

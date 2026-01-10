@@ -49,8 +49,10 @@ use crate::{irq::IrqId, mem::PageTableInfo};
 pub trait ArchTrait {
     type P: TableGeneric;
 
-    /// RAM 与内核虚拟地址空间的偏移
-    const PAGE_OFFSET: usize;
+    fn _va(paddr: usize) -> *mut u8;
+    fn _io(paddr: usize) -> *mut u8 {
+        Self::_va(paddr)
+    }
 
     fn kernel_code() -> &'static [u8];
     fn post_allocator();

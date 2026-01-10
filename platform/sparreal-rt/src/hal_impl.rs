@@ -27,8 +27,11 @@ struct MemoryImpl;
 
 impl_trait! {
 impl Memory for MemoryImpl {
-    fn page_offset() -> usize {
-        somehal::mem::page_offset()
+    fn _va(paddr: PhysAddr) -> VirtAddr {
+        somehal::mem::__va(paddr.raw() as _).into()
+    }
+    fn _io(paddr: PhysAddr) -> VirtAddr {
+        somehal::mem::__io(paddr.raw() as _).into()
     }
 
     fn kimage_offset() -> isize {

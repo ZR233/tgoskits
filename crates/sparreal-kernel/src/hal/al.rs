@@ -6,12 +6,13 @@ use kernutil::define_type;
 pub use kernutil::memory::{MemoryDescriptor, PageTableInfo};
 pub use page_table_generic::{AccessFlags, MemAttributes, MemConfig, PagingError};
 
-use crate::os::mem::{__va, page_size};
+use crate::os::mem::{__io, page_size};
 
 #[trait_ffi::def_extern_trait(mod_path = "hal::al")]
 pub trait Memory {
-    /// RAM 与内核虚拟地址空间的偏移
-    fn page_offset() -> usize;
+    fn _va(paddr: PhysAddr) -> VirtAddr;
+    fn _io(paddr: PhysAddr) -> VirtAddr;
+
     /// 内核镜像在虚拟地址空间中的偏移
     fn kimage_offset() -> isize;
 
@@ -81,7 +82,7 @@ pub trait PageTable: Send + 'static {
         size: usize,
         flush: bool,
     ) -> Result<IoMemAddr, PagingError> {
-        let virt = __va(phys_start);
+        let virt = __io(phys_start);
         let end = virt + size;
         let vaddr = virt.align_down(page_size());
         let paddr = phys_start.align_down(page_size());

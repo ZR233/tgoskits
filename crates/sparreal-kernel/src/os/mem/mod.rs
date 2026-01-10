@@ -14,8 +14,11 @@ pub fn page_size() -> usize {
 }
 
 pub(crate) fn __va(addr: PhysAddr) -> VirtAddr {
-    let offset = crate::hal::al::memory::page_offset();
-    VirtAddr::new(addr.raw() + offset)
+    crate::hal::al::memory::_va(addr)
+}
+
+pub(crate) fn __io(addr: PhysAddr) -> VirtAddr {
+    crate::hal::al::memory::_io(addr)
 }
 
 pub(crate) fn __kimage_va(addr: PhysAddr) -> VirtAddr {

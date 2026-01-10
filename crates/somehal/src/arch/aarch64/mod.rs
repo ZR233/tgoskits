@@ -35,7 +35,9 @@ pub struct Arch;
 impl ArchTrait for Arch {
     type P = paging::Generic;
 
-    const PAGE_OFFSET: usize = PAGE_OFFSET;
+    fn _va(paddr: usize) -> *mut u8 {
+        (paddr + PAGE_OFFSET) as *mut u8
+    }
 
     fn post_allocator() {
         power::init();

@@ -29,7 +29,13 @@ pub struct Arch;
 impl ArchTrait for Arch {
     type P = paging::Generic;
 
-    const PAGE_OFFSET: usize = addrspace::PAGE_OFFSET;
+    fn _va(paddr: usize) -> *mut u8 {
+        (paddr + addrspace::PAGE_OFFSET) as *mut u8
+    }
+
+    fn _io(paddr: usize) -> *mut u8 {
+        (paddr + addrspace::IO_BASE) as *mut u8
+    }
 
     fn kernel_code() -> &'static [u8] {
         let start = ext_sym_addr!(_head);
