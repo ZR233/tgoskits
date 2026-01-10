@@ -7,7 +7,9 @@ mod context;
 pub(crate) mod entry;
 mod head;
 pub mod paging;
+pub(crate) mod pte; // tock-registers 风格的页表项
 mod register;
+pub(crate) mod registers; // tock-registers 风格的寄存器位域定义
 mod relocate;
 mod trap;
 
