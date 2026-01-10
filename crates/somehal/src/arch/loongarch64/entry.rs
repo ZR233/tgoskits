@@ -110,7 +110,8 @@ fn rust_main() -> ! {
         println!("{cmdline}");
     }
 
-    prime_entry()
+    //     prime_entry()
+    super::paging::relocate_kernel_to_vm_code()
 }
 
 fn eif_entry() {
@@ -118,4 +119,9 @@ fn eif_entry() {
         crate::efi_stub::setup_service(FW_ARG2 as _);
         println!("UEFI setup.");
     }
+}
+
+pub(crate) fn mmu_entry() -> ! {
+    super::relocate::reset();
+    crate::prime_entry()
 }

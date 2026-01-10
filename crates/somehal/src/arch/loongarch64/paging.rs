@@ -7,15 +7,18 @@
 
 use core::arch::naked_asm;
 
-use kernutil::StaticCell;
+use kernutil::{StaticCell, memory::MemoryType};
 use num_align::NumAlign;
-use page_table_generic::{MapConfig, MemConfig, PageTableEntry, PhysAddr, TableGeneric, VirtAddr};
+use page_table_generic::{
+    MapConfig, MemAttributes, PageTableEntry, PhysAddr, TableGeneric, VirtAddr,
+};
 
 use crate::{
     ArchTrait,
-    arch::Arch,
+    arch::{Arch, addrspace::to_phys},
+    console::print_mapping,
     consts::PAGE_SIZE,
-    mem::{PageTableInfo, page_size, ram::Ram, virt_to_phys},
+    mem::{__kimage_va, __va, MB, PageTableInfo, page_size, ram::Ram, virt_to_phys},
 };
 
 static BOOT_TABLE: StaticCell<page_table_generic::PageTable<Generic, Ram>> = StaticCell::uninit();
@@ -1009,7 +1012,78 @@ pub fn cpu_has_ptw() -> bool {
 }
 
 pub fn relocate_kernel_to_vm_code() -> ! {
-    panic!()
+    let k_start = crate::mem::kimage_range().start;
+
+    let mut table = crate::mem::mmu::new_boot_table();
+
+    let mut pte = Entry::new_valid();
+    pte.set_writable(true);
+    pte.set_executable(true);
+    pte.set_mem_attr(MemAttributes::Normal);
+
+    let v_start = __kimage_va(k_start);
+    let size = crate::mem::kimage_range().len().align_up(2 * MB);
+
+    print_mapping("KImage", v_start as _, k_start, size);
+
+    table
+        .map(&MapConfig {
+            vaddr: v_start.into(),
+            paddr: k_start.into(),
+            size,
+            pte,
+            allow_huge: true,
+            flush: false,
+        })
+        .unwrap();
+
+    let debug_base = unsafe { crate::console::DEBUG_BASE };
+    if debug_base != 0 {
+        let start = debug_base.align_down(page_size());
+        let size = page_size();
+        let mut pte = Entry::new_valid();
+        pte.set_writable(true);
+        pte.set_executable(false);
+        pte.set_mem_attr(MemAttributes::Device);
+
+        print_mapping("Debug serial", __va(start) as _, start, size);
+
+        table
+            .map(&MapConfig {
+                vaddr: start.into(),
+                paddr: start.into(),
+                size,
+                pte,
+                allow_huge: true,
+                flush: false,
+            })
+            .unwrap();
+    }
+
+    let tb_addr = table.root_paddr();
+    crate::mem::mmu::set_boot_table(table);
+
+    println!("Boot page table at physical address: {:#x}", tb_addr);
+
+    // Use physical address to avoid virtual address mapping issues
+    let mmu_entry_phys = to_phys(super::entry::mmu_entry as *const () as usize);
+    println!("MMU Entry point at physical address: {:#x}", mmu_entry_phys);
+
+    let tb = PageTableInfo {
+        asid: 0,
+        addr: tb_addr.into(),
+    };
+
+    let v_sp = __kimage_va(to_phys(ext_sym_addr!(__cpu0_stack_top))) as usize;
+    let v_entry = __kimage_va(mmu_entry_phys) as usize;
+
+    println!("Enabling MMU...");
+    super::Arch::set_kernel_page_table(tb);
+
+    println!("MMU enabled, jumping to {v_entry:#x}, sp={v_sp:#x}");
+    crate::mem::mmu::set_mmu_enabled();
+
+    relocate_kernel(v_entry, v_sp);
     // crate::after_finally_relocate()
     // let mut table = page_table_generic::PageTable::<Generic, _>::new(Ram).unwrap();
     // let table_addr = table.root_paddr().raw();
@@ -1069,13 +1143,15 @@ pub fn relocate_kernel_to_vm_code() -> ! {
     // }
 
     // relocate_kernel(crate::after_finally_relocate as *const () as _)
+    unreachable!()
 }
 
-// #[unsafe(naked)]
-// extern "C" fn relocate_kernel(entry: usize) -> ! {
-//     naked_asm!(
-//         "
-//         jr $a0
-//         ",
-//     )
-// }
+#[unsafe(naked)]
+extern "C" fn relocate_kernel(entry: usize, sp: usize) {
+    naked_asm!(
+        "
+        move $sp, $a1
+        jr $a0
+        ",
+    )
+}

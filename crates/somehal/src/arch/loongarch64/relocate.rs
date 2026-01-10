@@ -45,6 +45,12 @@ pub fn relocate_kernel_to_vm_code() {
     relocate_with_offset(0);
 }
 
+pub fn reset() {
+    unsafe {
+        crate::elf::reset(R_LARCH_RELATIVE);
+    }
+}
+
 pub fn relocate_with_offset(offset: i128) {
     unsafe {
         crate::elf::apply_reloc(
