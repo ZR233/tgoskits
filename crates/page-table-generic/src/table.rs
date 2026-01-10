@@ -324,7 +324,7 @@ impl<T: TableGeneric, A: FrameAllocator> PageTableRef<T, A> {
             .translate_recursive_with_level(vaddr, Frame::<T, A>::PT_LEVEL)?;
 
         // 根据页表项类型计算正确的偏移
-        let (phys_addr, _) = if pte.is_huge() {
+        let (phys_addr, _) = if pte.is_huge(level > 1) {
             // 大页映射：需要使用实际级别的大小来计算偏移
             let level_size = Frame::<T, A>::level_size(level);
             let offset_in_page = vaddr.raw() % level_size;

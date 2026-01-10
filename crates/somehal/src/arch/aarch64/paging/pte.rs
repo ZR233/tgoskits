@@ -73,11 +73,15 @@ impl PageTableEntry for Entry {
         });
     }
 
-    fn is_huge(&self) -> bool {
+    fn is_huge(&self, _is_dir: bool) -> bool {
+        // AArch64: 不区分目录项和页表项
+        // NON_BLOCK=0 表示块描述符（大页）
         !self.as_typed().is_set(PTE::NON_BLOCK)
     }
 
-    fn set_is_huge(&mut self, b: bool) {
+    fn set_is_huge(&mut self, b: bool, _is_dir: bool) {
+        // AArch64: 设置 NON_BLOCK 位
+        // NON_BLOCK=0 表示块描述符（大页），NON_BLOCK=1 表示表描述符
         self.as_typed().modify(if b {
             PTE::NON_BLOCK::CLEAR
         } else {
@@ -129,11 +133,15 @@ impl PageTableEntry for Entry {
         });
     }
 
-    fn is_global(&self) -> bool {
+    fn is_global(&self, _is_dir: bool) -> bool {
+        // AArch64: 不区分目录项和页表项
+        // nG=0 表示全局
         !self.as_typed().is_set(PTE::NG)
     }
 
-    fn set_global(&mut self, b: bool) {
+    fn set_global(&mut self, b: bool, _is_dir: bool) {
+        // AArch64: 设置 nG 位
+        // nG=0 表示全局，nG=1 表示非全局
         self.as_typed()
             .modify(if b { PTE::NG::CLEAR } else { PTE::NG::SET });
     }

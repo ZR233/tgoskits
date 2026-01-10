@@ -191,7 +191,7 @@ fn do_vint(_tf: &mut TrapFrame) {
 #[unsafe(no_mangle)]
 extern "C" fn do_page_fault(tf: &TrapFrame, write: usize, address: usize) -> ! {
     println!("do_page_fault called");
-   
+
     let estat = estat::read();
     let ecode = estat.ecode();
     let esubcode = estat.esubcode();
@@ -727,8 +727,8 @@ extern "C" fn do_address_error(tf: &TrapFrame, badv: usize) -> ! {
 }
 
 fn panic_on_exception(name: &str, tf: &TrapFrame, fmt: Arguments<'_>) -> ! {
-    panic!(
-        "\n\
+    println!(
+        "
         ============================================================\n\
         {name} EXCEPTION\n\
         ============================================================\n\
@@ -784,5 +784,7 @@ fn panic_on_exception(name: &str, tf: &TrapFrame, fmt: Arguments<'_>) -> ! {
         tf.regs.s6,
         tf.regs.s7,
         tf.regs.s8,
-    )
+    );
+    println!("Panicked:");
+    panic!()
 }

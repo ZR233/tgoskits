@@ -169,7 +169,7 @@ where
                 let entries = self.as_slice();
                 if i < entries.len() {
                     let entry = &entries[i];
-                    (entry.valid(), entry.is_huge(), entry.paddr())
+                    (entry.valid(), entry.is_huge(level > 1), entry.paddr())
                 } else {
                     (false, false, crate::PhysAddr::new(0))
                 }
@@ -238,7 +238,7 @@ where
         }
 
         // 如果是大页映射或叶子级别，直接返回页表项及其级别
-        if pte.is_huge() || level == 1 {
+        if pte.is_huge(level > 1) || level == 1 {
             return Ok((pte, level));
         }
 
@@ -272,7 +272,7 @@ where
         let entries = self.as_slice();
         let entry = &entries[index];
 
-        if entry.valid() && !entry.is_huge() {
+        if entry.valid() && !entry.is_huge(level > 1) {
             // 递归释放子帧（子帧的级别是 level - 1）
             let mut child_frame = Frame::<T, A>::from_pte(entry, self.allocator.clone());
             child_frame.deallocate_recursive(level - 1);

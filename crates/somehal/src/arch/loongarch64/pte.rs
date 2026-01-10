@@ -36,8 +36,11 @@ register_bitfields![u64,
             WUC = 0b10   // 弱序非缓存 (Weakly-ordered UnCached)
         ],
 
-        /// 目录项大页表项标志位 H，为 1 表示此时的目录项实际上存放了一个大页的页表项信息；
-        GH OFFSET(6) NUMBITS(1) [],
+        /// H/G - 共享位（bit 6）
+        /// 在目录项中：H=1 表示大页映射
+        /// 在页表项中：G=1 表示全局映射（此时 H 必须为 0）
+        /// 注意：根据上下文区分是 H 位还是 G 位，不能同时为 1
+        HG_BIT OFFSET(6) NUMBITS(1) [],
 
         /// P - 存在位 (bit 7)
         PRESENT OFFSET(7) NUMBITS(1) [],
@@ -103,7 +106,6 @@ impl PageTableEntry for Entry {
     fn new_valid() -> Self {
         let mut entry = Self::empty();
         entry.set_valid(true);
-        entry.set_global(true);
         entry
     }
 
@@ -128,13 +130,29 @@ impl PageTableEntry for Entry {
         });
     }
 
-    fn is_huge(&self) -> bool {
-        self.as_typed().is_set(PTE::GH)
+    fn is_huge(&self, is_dir: bool) -> bool {
+        if is_dir {
+            // 目录项：检查 H 位（bit 6）
+            self.as_typed().is_set(PTE::HG_BIT)
+        } else {
+            // 页表项：不可能是大页
+            false
+        }
     }
 
-    fn set_is_huge(&mut self, b: bool) {
-        self.as_typed_mut()
-            .modify(if b { PTE::GH::SET } else { PTE::GH::CLEAR });
+    fn set_is_huge(&mut self, b: bool, is_dir: bool) {
+        if !is_dir {
+            // 页表项不能设置为大页
+            return;
+        }
+
+        // 目录项：设置 H 位（bit 6）
+        // 注意：设置 H 位时，保持 HGLOBAL 不变（由 set_global 管理）
+        if b {
+            self.as_typed_mut().modify(PTE::HG_BIT::SET);
+        } else {
+            self.as_typed_mut().modify(PTE::HG_BIT::CLEAR);
+        }
     }
 
     fn is_writable(&self) -> bool {
@@ -173,13 +191,34 @@ impl PageTableEntry for Entry {
         self.as_typed_mut().modify(plv);
     }
 
-    fn is_global(&self) -> bool {
-        self.as_typed().is_set(PTE::GH)
+    fn is_global(&self, is_dir: bool) -> bool {
+        if is_dir {
+            // 目录项：检查 HGLOBAL（bit 12），且必须是 H=1 的大页
+            self.as_typed().is_set(PTE::HG_BIT) && self.as_typed().is_set(PTE::HGLOBAL)
+        } else {
+            // 页表项：检查 GLOBAL（bit 6）
+            self.as_typed().is_set(PTE::HG_BIT)
+        }
     }
 
-    fn set_global(&mut self, b: bool) {
-        self.as_typed_mut()
-            .modify(if b { PTE::GH::SET } else { PTE::GH::CLEAR });
+    fn set_global(&mut self, b: bool, is_dir: bool) {
+        if is_dir {
+            // 目录项：设置 HGLOBAL（bit 12），同时设置 H 位
+            if b {
+                self.as_typed_mut()
+                    .modify(PTE::HG_BIT::SET + PTE::HGLOBAL::SET);
+            } else {
+                self.as_typed_mut().modify(PTE::HGLOBAL::CLEAR);
+                // 注意：不清除 H 位，因为可能有其他用途
+            }
+        } else {
+            // 页表项：设置 GLOBAL（bit 6）
+            if b {
+                self.as_typed_mut().modify(PTE::HG_BIT::SET);
+            } else {
+                self.as_typed_mut().modify(PTE::HG_BIT::CLEAR);
+            }
+        }
     }
 
     fn is_accessed(&self) -> bool {
@@ -350,7 +389,9 @@ pub fn find_stlb(vaddr: usize) -> WalkResult {
         }
 
         // 检查是否是大页 (H bit 6)
-        if entry.is_huge() {
+        // 只检查目录项（Dir3/Dir2/Dir1/Dir0），页表项（PT）不可能是大页
+        let is_dir = !level_name.contains("PT");
+        if entry.is_huge(is_dir) {
             println!("  -> 检测到大页！");
             let phys_base = entry.paddr().raw() & !PAGE_MASK;
             let offset_mask = (1 << base) - 1;

@@ -727,7 +727,7 @@ pub fn relocate_kernel_to_vm_code() -> ! {
     pte.set_writable(true);
     pte.set_executable(true);
     pte.set_mem_attr(MemAttributes::Normal);
-    pte.set_global(true); // 设置全局位，确保在大页映射时正确设置 GH 位
+    pte.set_global(true, false); // 设置全局位（页表项，is_dir = false）
 
     println!("Page table entry flags: {:?}", pte);
 
@@ -752,7 +752,6 @@ pub fn relocate_kernel_to_vm_code() -> ! {
         })
         .unwrap();
 
-    println!("Mapping completed successfully");
     let tb_addr = table.root_paddr();
     crate::mem::mmu::set_boot_table(table);
 

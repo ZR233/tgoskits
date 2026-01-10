@@ -90,7 +90,8 @@ where
                 }
 
                 let mut new_pte = config.pte_template;
-                new_pte.set_is_huge(true); // 必须先设置 huge 标志
+                // 目录项（config.level > 1）可以是大页
+                new_pte.set_is_huge(true, true); // is_dir = true
                 new_pte.set_paddr(paddr); // 然后设置物理地址
                 new_pte.set_valid(true); // 最后设置有效标志
                 *pte_ref = new_pte;
@@ -115,7 +116,8 @@ where
                 }
 
                 let mut new_pte = config.pte_template;
-                new_pte.set_is_huge(false); // 确保不是大页
+                // 页表项（config.level == 1）不是大页
+                new_pte.set_is_huge(false, false); // is_dir = false
                 new_pte.set_paddr(paddr); // 设置物理地址
                 new_pte.set_valid(true); // 设置有效标志
                 *pte_ref = new_pte;
@@ -135,7 +137,8 @@ where
             let current_pte = self.as_slice()[index];
 
             let child_frame = if current_pte.valid() {
-                if current_pte.is_huge() {
+                // 目录项（config.level > 1）可能有大页
+                if current_pte.is_huge(true) {
                     return Err(PagingError::hierarchy_error(
                         "Cannot create page table under huge page",
                     ));
@@ -152,7 +155,8 @@ where
                 let entries = self.as_slice_mut();
                 let pte_ref = &mut entries[index];
                 let mut new_pte = config.pte_template;
-                new_pte.set_is_huge(false); // 子页表指针不是大页
+                // 子页表指针（目录项）不是大页
+                new_pte.set_is_huge(false, true); // is_dir = true
                 new_pte.set_paddr(new_frame_paddr); // 设置指向子页表的物理地址
                 new_pte.set_valid(true); // 设置有效标志
                 *pte_ref = new_pte;
@@ -213,7 +217,7 @@ where
             }
 
             // 如果是叶子级别或者是大页，直接清除
-            if config.level == 1 || pte_ref.is_huge() {
+            if config.level == 1 || pte_ref.is_huge(config.level > 1) {
                 // 清除页表项
                 pte_ref.set_valid(false);
 
@@ -222,7 +226,7 @@ where
                     T::flush(Some(vaddr));
                 }
 
-                vaddr += if pte_ref.is_huge() {
+                vaddr += if pte_ref.is_huge(config.level > 1) {
                     level_size
                 } else {
                     T::PAGE_SIZE

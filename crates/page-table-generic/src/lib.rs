@@ -49,8 +49,16 @@ pub trait PageTableEntry: Debug + Sync + Send + Clone + Copy + Sized + 'static {
     fn paddr(&self) -> PhysAddr;
     fn set_paddr(&mut self, paddr: PhysAddr);
 
-    fn is_huge(&self) -> bool;
-    fn set_is_huge(&mut self, b: bool);
+    /// 检查是否为大页映射
+    ///
+    /// # 参数
+    /// - `is_dir`: 是否为目录项（只有目录项才能是大页）
+    fn is_huge(&self, is_dir: bool) -> bool;
+    /// 设置大页标志
+    ///
+    /// # 参数
+    /// - `is_dir`: 是否为目录项
+    fn set_is_huge(&mut self, b: bool, is_dir: bool);
 
     fn is_writable(&self) -> bool;
     fn set_writable(&mut self, b: bool);
@@ -61,8 +69,16 @@ pub trait PageTableEntry: Debug + Sync + Send + Clone + Copy + Sized + 'static {
     fn is_lower_access(&self) -> bool;
     fn set_lower_access(&mut self, b: bool);
 
-    fn is_global(&self) -> bool;
-    fn set_global(&mut self, b: bool);
+    /// 检查是否为全局映射
+    ///
+    /// # 参数
+    /// - `is_dir`: 是否为目录项（PMD/PUD/PGD）
+    fn is_global(&self, is_dir: bool) -> bool;
+    /// 设置全局映射标志
+    ///
+    /// # 参数
+    /// - `is_dir`: 是否为目录项
+    fn set_global(&mut self, b: bool, is_dir: bool);
 
     fn is_accessed(&self) -> bool;
     fn set_accessed(&mut self, b: bool);
