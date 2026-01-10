@@ -2,7 +2,7 @@ use byte_unit::{Byte, UnitType};
 use kernutil::StaticCell;
 pub use kernutil::memory::{MemoryDescriptor, MemoryType, PageTableInfo};
 use num_align::NumAlign;
-use ranges_ext::{RangeError, RangeVecOps};
+use ranges_ext::{RangeError, RangeExtBaseOps, RangeVecOps};
 
 pub mod mmu;
 pub(crate) mod ram;
@@ -168,10 +168,19 @@ pub fn print_memory_map() {
 pub(crate) fn add_memory_descriptor(
     desc: MemoryDescriptor,
 ) -> Result<(), RangeError<MemoryDescriptor>> {
-    let temp = unsafe {
-        let start = phys_to_virt(Ram {}.current().align_up(page_size()) as usize);
-        core::slice::from_raw_parts_mut(start, size_of::<MemoryMap>())
-    };
+    // let temp = unsafe {
+    //     let start = phys_to_virt(Ram {}.current().align_up(page_size()) as usize);
+    //     core::slice::from_raw_parts_mut(start, size_of::<MemoryMap>())
+    // };
 
-    unsafe { MEMORY_MAP.update(|mem| mem.merge_add(desc, temp)) }
+    unsafe {
+        // let temp_ptr = MEMORY_MAP_TEMP.as_slice().as_ptr();
+        // let len = MEMORY_MAP_TEMP.len() * core::mem::size_of::<MemoryDescriptor>();
+        // let temp = core::slice::from_raw_parts_mut(temp_ptr as *mut u8, len);
+
+        // MEMORY_MAP.update(|mem| mem.merge_add(desc, temp))
+
+        let mut temp = MemoryMap::new();
+        MEMORY_MAP.update(|mem| mem.merge_add_with_temp(desc, &mut temp))
+    }
 }
