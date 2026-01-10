@@ -18,8 +18,9 @@ pub const GB: usize = 1024 * MB;
 
 static mut VM_LOAD_OFFSET: isize = 0;
 static MEMORY_MAP: StaticCell<MemoryMap> = StaticCell::new(MemoryMap::new());
+static mut KIMAGE_START: usize = 0;
+static mut KIMAGE_END: usize = 0;
 
-// pub type PageTable<A> = crate::arch::PT<A>;
 pub type MemoryMap = heapless::Vec<MemoryDescriptor, 128>;
 
 /// 运行地址 - 链接地址
@@ -88,13 +89,13 @@ pub(crate) fn _fixmap_io(paddr: usize) -> *mut u8 {
     }
 }
 
-pub(crate) fn early_init() {
+pub(crate) fn early_init(kernel_end_phys: usize) {
     static mut INITIALIZED: bool = false;
     if unsafe { INITIALIZED } {
         return;
     }
 
-    ram::init();
+    ram::init(kernel_end_phys);
     crate::fdt::save_fdt();
     unsafe {
         INITIALIZED = true;
@@ -109,14 +110,16 @@ pub(crate) fn init_after_mmu() -> Option<()> {
     Some(())
 }
 
+pub(crate) fn set_kernel_range(start: usize, end: usize) {
+    unsafe {
+        KIMAGE_START = start.align_down(page_size());
+        KIMAGE_END = end.align_up(page_size());
+    }
+}
+
 /// Get the physical range of the kernel image
 pub(crate) fn kimage_range() -> core::ops::Range<usize> {
-    let kernel = crate::arch::Arch::kernel_code().as_ptr_range();
-    let start = virt_to_phys(kernel.start);
-    let end = virt_to_phys(kernel.end);
-    // let end = ram::current() as usize;
-    // start..end.align_up(2 * MB)
-    start..end.align_up(page_size())
+    unsafe { KIMAGE_START..KIMAGE_END }
 }
 
 pub fn page_size() -> usize {
@@ -127,8 +130,8 @@ pub fn page_size() -> usize {
 }
 
 fn ram_used_range() -> core::ops::Range<usize> {
-    let kernel = crate::arch::Arch::kernel_code().as_ptr_range();
-    let start = virt_to_phys(kernel.end);
+    let kernel = kimage_range();
+    let start = kernel.end;
     let end = ram::current() as usize;
     start..end.align_up(page_size())
 }

@@ -94,14 +94,15 @@ pub unsafe extern "C" fn kernel_entry(
 
 fn rust_main() -> ! {
     println!("LoongArch64 Rust kernel entry.");
+    let kernel_code_start_lma = to_phys(ext_sym_addr!(_head));
+    let kernel_code_end_lma = to_phys(ext_sym_addr!(__kernel_code_end));
+    crate::mem::set_kernel_range(kernel_code_start_lma, kernel_code_end_lma);
+    println!("Kernel code end LMA: {:#x}", kernel_code_end_lma);
     // 执行重定位，将所有地址从物理地址转换为虚拟地址
     super::relocate();
-    set_vm_load_offset(_head_lma() as isize - CACHE_BASE as isize);
+    set_vm_load_offset(crate::mem::kimage_range().start as isize - VM_LOAD_ADDRESS as isize);
+    crate::mem::early_init(crate::mem::kimage_range().end);
     crate::mem::mmu::set_mmu_enabled();
-
-    println!("Kernel relocated.");
-
-    let _ = crate::acpi::earlycon::acpi_setup_earlycon();
 
     println!("Rust main.");
 

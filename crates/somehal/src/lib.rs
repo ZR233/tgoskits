@@ -54,7 +54,6 @@ pub trait ArchTrait {
         Self::_va(paddr)
     }
 
-    fn kernel_code() -> &'static [u8];
     fn post_allocator();
 
     fn per_cpu_trap_init(is_primary: bool);

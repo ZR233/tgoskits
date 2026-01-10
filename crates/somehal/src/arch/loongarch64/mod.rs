@@ -37,12 +37,6 @@ impl ArchTrait for Arch {
         (paddr + addrspace::IO_BASE) as *mut u8
     }
 
-    fn kernel_code() -> &'static [u8] {
-        let start = ext_sym_addr!(_head);
-        let end = ext_sym_addr!(__kernel_code_end);
-        unsafe { core::slice::from_raw_parts(start as *const u8, end - start) }
-    }
-
     fn post_allocator() {}
 
     fn per_cpu_trap_init(is_primary: bool) {

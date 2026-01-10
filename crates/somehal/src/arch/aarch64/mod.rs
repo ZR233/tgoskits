@@ -43,12 +43,7 @@ impl ArchTrait for Arch {
         power::init();
     }
 
-    fn kernel_code() -> &'static [u8] {
-        let start = ext_sym_addr!(_head);
-        let end = ext_sym_addr!(__kernel_code_end);
-        let size = end - start;
-        unsafe { core::slice::from_raw_parts(start as *const u8, size) }
-    }
+
 
     fn per_cpu_trap_init(_is_primary: bool) {
         trap::setup();

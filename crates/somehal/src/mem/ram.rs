@@ -3,10 +3,7 @@ use core::{alloc::Layout, cell::UnsafeCell};
 use num_align::NumAlign;
 use page_table_generic::FrameAllocator;
 
-use crate::{
-    ArchTrait,
-    mem::{page_size, virt_to_phys},
-};
+use crate::mem::page_size;
 
 struct SimpleAllocator {
     start: usize,
@@ -69,11 +66,9 @@ impl FrameAllocator for Ram {
     }
 }
 
-pub fn init() {
-    let kernel_end = crate::arch::Arch::kernel_code().as_ptr_range().end as usize;
-    let kernel_end = virt_to_phys(kernel_end as _);
+pub fn init(kernel_end_phys: usize) {
     unsafe {
-        (*RAM_ALLOC.0.get()).init(kernel_end);
+        (*RAM_ALLOC.0.get()).init(kernel_end_phys);
     }
 }
 
