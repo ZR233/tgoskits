@@ -46,12 +46,6 @@ SECTIONS
         *(.data .data.*)
         *(.init.data)
         *(.sdata .sdata.*)
-
-        . = ALIGN(PAGE_SIZE);
-        _sdriver = .;
-        *(.driver.register .driver.register.*)
-        _edriver = .;
-        . = ALIGN(PAGE_SIZE);
     }
     .rela.dyn : ALIGN(8) {
         __rela_dyn_begin = .;

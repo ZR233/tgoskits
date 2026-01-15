@@ -9,6 +9,9 @@ INCLUDE "somehal.x"
 
 SECTIONS
 {
-   
-}
-
+   .driver : ALIGN(4K) {
+        _sdriver = .;
+        KEEP(*(.driver.register))
+        _edriver = .;
+    }
+} INSERT AFTER .data;
