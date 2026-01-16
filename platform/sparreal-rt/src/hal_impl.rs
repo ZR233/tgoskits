@@ -2,7 +2,7 @@ use alloc::boxed::Box;
 use core::ptr::{NonNull, slice_from_raw_parts};
 use core::time::Duration;
 
-use somehal::{MemConfig, irq_handler, mem::PteConfig};
+use someboot::{MemConfig, irq_handler, mem::PteConfig};
 use sparreal_kernel::hal::al::AccessFlags;
 use sparreal_kernel::{hal::al::*, impl_trait, os::mem::KernelAllocator};
 
@@ -11,20 +11,20 @@ struct InitImpl;
 impl_trait! {
 impl Platform for InitImpl {
     fn post_allocator() {
-        somehal::post_allocator();
+        someboot::post_allocator();
     }
     fn shutdown() -> ! {
-        somehal::power::shutdown()
+        someboot::power::shutdown()
     }
     fn irq_is_enabled(irq: IrqId) -> bool {
-        somehal::irq::irq_is_enabled(irq.raw().into())
+        someboot::irq::irq_is_enabled(irq.raw().into())
     }
     fn irq_set_enabled(irq: IrqId, enable: bool) {
-        somehal::irq::irq_set_enable(irq.raw().into(), enable);
+        someboot::irq::irq_set_enable(irq.raw().into(), enable);
     }
 
     fn fdt_addr() -> Option<NonNull<u8>> {
-        somehal::fdt_addr().map(|ptr| unsafe{ NonNull::new_unchecked(ptr)})
+        someboot::fdt_addr().map(|ptr| unsafe{ NonNull::new_unchecked(ptr)})
     }
 
     fn driver_registers() -> DriverRegisterSlice {
@@ -52,54 +52,54 @@ struct MemoryImpl;
 impl_trait! {
 impl Memory for MemoryImpl {
     fn _va(paddr: PhysAddr) -> VirtAddr {
-        somehal::mem::__va(paddr.raw() as _).into()
+        someboot::mem::__va(paddr.raw() as _).into()
     }
     fn _io(paddr: PhysAddr) -> VirtAddr {
-        somehal::mem::__io(paddr.raw() as _).into()
+        someboot::mem::__io(paddr.raw() as _).into()
     }
 
     fn kimage_offset() -> isize {
-        somehal::mem::vm_load_offset()
+        someboot::mem::vm_load_offset()
     }
 
     fn virt_to_phys(virt: VirtAddr) -> PhysAddr {
-        somehal::mem::virt_to_phys(virt.raw() as _).into()
+        someboot::mem::virt_to_phys(virt.raw() as _).into()
     }
 
     fn page_size() -> usize {
-        somehal::mem::page_size()
+        someboot::mem::page_size()
     }
 
     fn memory_map() -> &'static[ MemoryDescriptor] {
-        somehal::mem::memory_map()
+        someboot::mem::memory_map()
     }
 
     fn page_table_new() -> Result< Box<dyn PageTable>, PagingError> {
-        Ok(Box::new( PageTableImpl( somehal::mem::mmu::new_page_table(KernelAllocator)?)))
+        Ok(Box::new( PageTableImpl( someboot::mem::mmu::new_page_table(KernelAllocator)?)))
     }
 
     fn kernel_page_table() -> PhysAddr {
-        let paddr = somehal::kernel_page_table_paddr();
+        let paddr = someboot::kernel_page_table_paddr();
         PhysAddr::new(paddr)
     }
 
     fn set_kernel_page_table(pt: PhysAddr) {
-        somehal::set_kernel_page_table_paddr(pt.raw());
+        someboot::set_kernel_page_table_paddr(pt.raw());
     }
 
     fn user_page_table() -> PageTableInfo {
-        somehal::user_page_table()
+        someboot::user_page_table()
     }
 
     fn set_user_page_table(pt: PageTableInfo) {
-        somehal::set_user_page_table(pt);
+        someboot::set_user_page_table(pt);
     }
 
 
 }
 }
 
-pub struct PageTableImpl(somehal::mem::mmu::ArchPageTable<KernelAllocator>);
+pub struct PageTableImpl(someboot::mem::mmu::ArchPageTable<KernelAllocator>);
 
 impl PageTable for PageTableImpl {
     fn addr(&self) -> PhysAddr {
@@ -123,7 +123,7 @@ impl PageTable for PageTableImpl {
             ..Default::default()
         };
 
-        self.0.map(&somehal::mem::MapConfig {
+        self.0.map(&someboot::mem::MapConfig {
             vaddr: virt_start.raw().into(),
             paddr: phys_start.raw().into(),
             size,
@@ -147,41 +147,41 @@ impl Cpu for CpuImpl {
     }
 
     fn irq_local_is_enabled() -> bool {
-        somehal::irq::irq_local_is_enabled()
+        someboot::irq::irq_local_is_enabled()
     }
 
     fn irq_local_set_enable(enable: bool) {
-        somehal::irq::irq_local_set_enable(enable);
+        someboot::irq::irq_local_set_enable(enable);
     }
 
     fn systimer_irq() -> IrqId {
-        somehal::irq::systimer_irq().raw().into()
+        someboot::irq::systimer_irq().raw().into()
     }
 
     fn systimer_enable() {
-        somehal::timer::enable();
+        someboot::timer::enable();
     }
 
     fn systimer_irq_enable() {
-        somehal::timer::irq_enable();
+        someboot::timer::irq_enable();
     }
 
     fn systimer_irq_disable() {
-        somehal::timer::irq_disable();
+        someboot::timer::irq_disable();
     }
 
     fn systimer_irq_is_enabled() -> bool {
-        somehal::timer::irq_is_enabled()
+        someboot::timer::irq_is_enabled()
     }
 
     fn systimer_set_next_event(interval: Duration) {
-        somehal::timer::set_next_event(interval);
+        someboot::timer::set_next_event(interval);
     }
     fn systimer_ack() {
-        somehal::timer::ack();
+        someboot::timer::ack();
     }
     fn systimer_since_boot() -> Duration {
-        somehal::timer::since_boot()
+        someboot::timer::since_boot()
     }
 }
 }
@@ -191,7 +191,7 @@ struct ConsoleImpl;
 impl_trait! {
 impl Console for ConsoleImpl {
     fn early_write(bytes: &[u8]) -> usize {
-        somehal::console::_write_bytes(bytes)
+        someboot::console::_write_bytes(bytes)
     }
 
     fn early_read() -> Option<u8> {
@@ -201,6 +201,6 @@ impl Console for ConsoleImpl {
 }
 
 #[irq_handler]
-fn somehal_handle_irq(irq: somehal::irq::IrqId) {
+fn somehal_handle_irq(irq: someboot::irq::IrqId) {
     handle_irq(irq.raw().into());
 }

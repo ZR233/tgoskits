@@ -41,7 +41,7 @@ pub fn irq_handler(args: TokenStream, input: TokenStream) -> TokenStream {
     let expanded = quote! {
         #[unsafe(no_mangle)]
         #(#attrs)*
-        pub #unsafety extern "Rust" fn _somehal_handle_irq(#input_arg) {
+        pub #unsafety extern "Rust" fn _someboot_handle_irq(#input_arg) {
             #(#stmts)*
         }
     };
@@ -110,7 +110,7 @@ fn validate_args(
                     if !is_irq_id_type(&arg.ty) {
                         return Err(syn::Error::new(
                             arg.ty.span(),
-                            "`#[irq_handler]` argument type must be `somehal::irq::IrqId`",
+                            "`#[irq_handler]` argument type must be `someboot::irq::IrqId`",
                         ));
                     }
                     Ok(inputs.first().unwrap())

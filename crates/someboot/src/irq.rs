@@ -50,9 +50,9 @@ impl From<u32> for IrqId {
 #[allow(dead_code)]
 pub(crate) fn handle_irq(hwirq: IrqId) {
     unsafe extern "Rust" {
-        fn _somehal_handle_irq(hwirq: IrqId);
+        fn _someboot_handle_irq(hwirq: IrqId);
     }
     unsafe {
-        _somehal_handle_irq(hwirq);
+        _someboot_handle_irq(hwirq);
     }
 }

@@ -10,12 +10,12 @@ repository = "https://github.com/ZR233/sparreal-os"
 version = "0.13.0"
 
 [features]
-hv = ["somehal/hv"]
-uspace = ["somehal/uspace"]
+hv = ["someboot/hv"]
+uspace = ["someboot/uspace"]
 
 [dependencies]
 someplat = { workspace = true }
-somehal = { workspace = true }
+someboot = { workspace = true }
 sparreal-kernel = { workspace = true }
 
 log = {workspace = true}

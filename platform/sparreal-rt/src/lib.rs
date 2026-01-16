@@ -11,7 +11,7 @@ pub use sparreal_kernel::*;
 
 mod hal_impl;
 
-#[somehal::entry]
+#[someboot::entry]
 fn main() -> ! {
     someplat::set_kernel_op(&Kernel);
     sparreal_kernel::run_kernel()
@@ -20,7 +20,7 @@ fn main() -> ! {
 pub struct Kernel;
 
 impl KernelOp for Kernel {
-    fn ioremap(&self, paddr: usize, size: usize) -> somehal::PagingResult<*mut u8> {
+    fn ioremap(&self, paddr: usize, size: usize) -> someboot::PagingResult<*mut u8> {
         sparreal_kernel::os::mem::ioremap(paddr.into(), size).map(|addr| addr.raw() as *mut u8)
     }
 }

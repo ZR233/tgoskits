@@ -68,7 +68,7 @@ struct Build {
 }
 
 impl Build {
-    const LD_NAME: &'static str = "somehal.x";
+    const LD_NAME: &'static str = "someboot.x";
 
     fn prepare(&mut self) {
         match self.arch {

@@ -94,16 +94,16 @@ ostool run -c ./test-suit/timer/loongarch64.toml qemu -q ./test-suit/timer/qemu-
     ↓
 内核核心 (crates/sparreal-kernel/)
     ↓
-硬件抽象层 (crates/somehal/)
+硬件抽象层 (crates/someboot/)
     ↓
-架构实现 (somehal/src/arch/)
+架构实现 (someboot/src/arch/)
 ```
 
 ### 启动流程
 
-loongarch64 入口不同，使用 uefi，入口在 crates\somehal\src\efi_stub\mod.rs efi_pe_entry 。
+loongarch64 入口不同，使用 uefi，入口在 crates\someboot\src\efi_stub\mod.rs efi_pe_entry 。
 
-1. **引导入口**: `platform/sparreal-rt/src/lib.rs` 的 `main()` 函数（通过 `#[somehal::entry]` 宏）
+1. **引导入口**: `platform/sparreal-rt/src/lib.rs` 的 `main()` 函数（通过 `#[someboot::entry]` 宏）
 2. **内核启动**: 调用 `sparreal_kernel::run_kernel()`
 3. **HAL 初始化**: `sparreal-kernel/src/hal/setup.rs` 的 `start_kernel()`
    - 初始化日志系统
@@ -179,13 +179,13 @@ loongarch64 入口不同，使用 uefi，入口在 crates\somehal\src\efi_stub\m
 - `TableGeneric` - 多级页表实现
 - 支持大页映射（AArch64 2MB/1GB 页）
 
-### 硬件抽象层 (somehal)
+### 硬件抽象层 (someboot)
 
-`crates/somehal/` 提供跨架构硬件抽象：
+`crates/someboot/` 提供跨架构硬件抽象：
 
 #### ArchTrait 统一接口
 
-定义在 `somehal/src/lib.rs`，包含：
+定义在 `someboot/src/lib.rs`，包含：
 
 - 页表操作（创建、切换、查询）
 - 地址转换（虚拟/物理/I/O）
@@ -195,11 +195,11 @@ loongarch64 入口不同，使用 uefi，入口在 crates\somehal\src\efi_stub\m
 
 #### 架构实现
 
-- `somehal/src/arch/aarch64/` - AArch64 支持
+- `someboot/src/arch/aarch64/` - AArch64 支持
   - EL1/EL2 异常级别
   - ARMv8-MMU 页表
   - Generic Timer 集成
-- `somehal/src/arch/loongarch64/` - LoongArch64 支持
+- `someboot/src/arch/loongarch64/` - LoongArch64 支持
   - CSR 寄存器操作
   - TLB 管理
   - 常量映射配置
@@ -226,13 +226,13 @@ loongarch64 入口不同，使用 uefi，入口在 crates\somehal\src\efi_stub\m
 ```
 sparreal-rt (平台运行时)
   ├─→ sparreal-kernel (内核核心)
-  │     ├─→ somehal (硬件抽象)
+  │     ├─→ someboot (硬件抽象)
   │     ├─→ page-table-generic (页表)
   │     ├─→ kernutil (工具)
   │     └─→ dma-api (DMA)
-  └─→ somehal (架构实现)
+  └─→ someboot (架构实现)
         ├─→ kasm-aarch64 (AArch64 汇编)
-        └─→ somehal-macros (宏)
+        └─→ someboot-macros (宏)
 ```
 
 ## 关键约定
@@ -298,7 +298,7 @@ impl Platform for PlatformImpl {
 ### 修改内核功能
 
 1. 核心代码在 `crates/sparreal-kernel/`
-2. HAL 接口在 `crates/somehal/`
+2. HAL 接口在 `crates/someboot/`
 3. 修改后运行相关测试套件验证
 4. 使用 `ostool run qemu -d` 进行调试
 

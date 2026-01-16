@@ -181,10 +181,10 @@ fn do_vint(_tf: &mut TrapFrame) {
         estat &= !(1 << (hwirq - 1));
 
         unsafe extern "Rust" {
-            fn _somehal_handle_irq(hwirq: usize);
+            fn _someboot_handle_irq(hwirq: usize);
         }
 
-        unsafe { _somehal_handle_irq((hwirq - 1) as _) };
+        unsafe { _someboot_handle_irq((hwirq - 1) as _) };
     }
 }
 

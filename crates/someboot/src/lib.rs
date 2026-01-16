@@ -40,12 +40,11 @@ pub mod mem;
 pub mod power;
 pub mod timer;
 
+pub use fdt::fdt_addr;
 pub use page_table_generic::*;
 pub use somehal_macros::{entry, irq_handler, secondary_entry};
-pub use fdt::fdt_addr;
 
 use crate::{irq::IrqId, mem::PageTableInfo};
-
 
 #[allow(unused)]
 pub trait ArchTrait {
@@ -127,7 +126,7 @@ fn prime_entry() -> ! {
     mem::print_memory_map();
 
     unsafe extern "C" {
-        fn __somehal_main() -> !;
+        fn __someboot_main() -> !;
     }
-    unsafe { __somehal_main() }
+    unsafe { __someboot_main() }
 }

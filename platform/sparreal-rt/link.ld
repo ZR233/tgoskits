@@ -5,7 +5,7 @@
 
 STACK_SIZE = 0x40000;
 
-INCLUDE "somehal.x"
+INCLUDE "someboot.x"
 
 SECTIONS
 {

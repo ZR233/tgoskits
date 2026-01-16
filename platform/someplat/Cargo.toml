@@ -14,7 +14,7 @@ anyhow = {workspace = true}
 page-table-generic = {workspace = true}
 rdif-intc = "0.13"
 rdrive = {workspace = true}
-somehal = {workspace = true}
+someboot = {workspace = true}
 thiserror = {workspace = true}
 
 [target.'cfg(target_arch = "aarch64")'.dependencies]

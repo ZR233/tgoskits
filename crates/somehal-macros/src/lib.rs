@@ -36,7 +36,7 @@ mod trap;
 /// ```
 #[proc_macro_attribute]
 pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
-    _entry::entry(args, input, "__somehal_main")
+    _entry::entry(args, input, "__someboot_main")
 }
 
 /// Attribute to declare the secondary entry point of the program
@@ -57,7 +57,7 @@ pub fn entry(args: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn secondary_entry(args: TokenStream, input: TokenStream) -> TokenStream {
-    _entry::entry(args, input, "__somehal_secondary")
+    _entry::entry(args, input, "__someboot_secondary")
 }
 
 /// 中断处理器属性宏
@@ -68,7 +68,7 @@ pub fn secondary_entry(args: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// 函数必须：
 /// - 不能是 `const`、`async` 或有泛型参数
-/// - 必须有且仅有一个参数，类型为 `somehal::irq::IrqId`
+/// - 必须有且仅有一个参数，类型为 `someboot::irq::IrqId`
 /// - 无返回类型
 /// - 不应有显式的可见性声明（宏自动设为 `pub`）
 ///
@@ -77,7 +77,7 @@ pub fn secondary_entry(args: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 /// # #![no_std]
 /// # use somehal_macros::irq_handler;
-/// # use somehal::irq::IrqId;
+/// # use someboot::irq::IrqId;
 /// #[irq_handler]
 /// fn my_irq_handler(irq: IrqId) {
 ///     // 处理中断
@@ -91,7 +91,7 @@ pub fn secondary_entry(args: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// ```ignore
 /// #[unsafe(no_mangle)]
-/// pub extern "Rust" fn _somehal_handle_irq(irq: somehal::irq::IrqId) {
+/// pub extern "Rust" fn _someboot_handle_irq(irq: someboot::irq::IrqId) {
 ///     // 你的代码
 /// }
 /// ```
@@ -107,7 +107,7 @@ pub fn secondary_entry(args: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// # 注意
 ///
-/// - 每个平台只能有一个全局中断入口（符号名固定为 `_somehal_handle_irq`）
+/// - 每个平台只能有一个全局中断入口（符号名固定为 `_someboot_handle_irq`）
 /// - 参数名会被保留（如 `irq`、`hwirq` 等），不会被强制修改
 #[proc_macro_attribute]
 pub fn irq_handler(args: TokenStream, input: TokenStream) -> TokenStream {

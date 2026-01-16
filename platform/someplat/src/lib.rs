@@ -7,7 +7,7 @@ extern crate alloc;
 
 pub use page_table_generic::{PagingError, PagingResult};
 use rdrive::probe::OnProbeError;
-pub use somehal::*;
+pub use someboot::*;
 
 #[cfg(target_arch = "loongarch64")]
 #[path = "arch/loongarch64/mod.rs"]
