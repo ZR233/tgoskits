@@ -29,9 +29,9 @@ dma-api = {version = "0.6", path = "crates/dma-api"}
 kasm-aarch64 = {path = "crates/kasm-aarch64", version = "0.2"}
 kernutil = {path = "crates/kernutil", version = "0.1"}
 page-table-generic = {path = "crates/page-table-generic", version = "0.7"}
-someboot = {path = "crates/someboot", version = "0.5"}
+someboot = {path = "crates/someboot", version = "0.1"}
 somehal-macros = {path = "crates/somehal-macros", version = "0.1"}
-somehal = {path = "platform/somehal", version = "0.1"}
+somehal = {path = "platform/somehal", version = "0.5"}
 sparreal-kernel = {path = "crates/sparreal-kernel", version = "0.13"}
 sparreal-macros = {path = "crates/sparreal-macros", version = "0.10"}
 sparreal-rt = {path = "platform/sparreal-rt", version = "0.13"}
