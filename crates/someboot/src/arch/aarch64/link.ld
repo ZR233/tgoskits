@@ -6,7 +6,7 @@ PECOFF_FILE_ALIGN = 0x200;
 
 PROVIDE(PAGE_SIZE = 0x1000);
 /* Provide default stack size if not defined */
-PROVIDE(STACK_SIZE = 0x4000);
+PROVIDE(STACK_SIZE = 0x40000);
 VM_LOAD_ADDRESS = ${kernel_load_vaddr};
 
 OUTPUT_ARCH(aarch64)
