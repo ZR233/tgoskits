@@ -10,9 +10,7 @@ impl<T> DBox<T> {
         align: usize,
         direction: Direction,
     ) -> Result<Self, DmaError> {
-        let mut data = DCommon::new(os, core::mem::size_of::<T>(), align, direction)?;
-        data.as_mut_slice().fill(0);
-        data.confirm_write_all();
+        let data = DCommon::new(os, core::mem::size_of::<T>(), align, direction)?;
         Ok(Self { data })
     }
 

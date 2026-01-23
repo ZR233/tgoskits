@@ -1,6 +1,6 @@
 use core::{alloc::Layout, num::NonZeroUsize, ptr::NonNull};
 
-use crate::{DeviceDma, Direction, DmaError, DmaHandle};
+use crate::{DeviceDma, Direction, DmaError, DmaHandle, osal::arch::flush};
 
 pub struct DCommon<T> {
     pub handle: DmaHandle,
@@ -30,6 +30,11 @@ impl<T> DCommon<T> {
                 mask: dma_mask,
             });
         }
+
+        unsafe {
+            core::ptr::write_bytes(handle.dma_virt().as_ptr(), 0, size);
+        }
+        flush(handle.dma_virt(), size);
 
         Ok(Self {
             handle,
