@@ -413,7 +413,7 @@ dependencies = [
 
 [[package]]
 name = "dma-api"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "aarch64-cpu-ext",
  "cfg-if",
@@ -1077,7 +1077,7 @@ version = "0.1.0"
 dependencies = [
  "bare-test",
  "bare-test-macros 0.3.0",
- "dma-api 0.6.0",
+ "dma-api 0.7.0",
  "log",
 ]
 
@@ -1183,7 +1183,7 @@ dependencies = [
  "bitflags 2.10.0",
  "buddy_system_allocator",
  "byte-unit",
- "dma-api 0.6.0",
+ "dma-api 0.7.0",
  "fdt-raw",
  "heapless",
  "kernutil",

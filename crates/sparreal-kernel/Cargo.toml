@@ -25,7 +25,7 @@ num-align = "0.1"
 fdt-raw = "0.1"
 
 
-dma-api = {workspace = true, features = ["alloc"]}
+dma-api = {workspace = true}
 kernutil = {workspace = true}
 sparreal-macros = {workspace = true}
 rdrive = {workspace = true}

@@ -26,7 +26,7 @@ derive_more = {version = "2.1", default-features = false, features = ["full"]}
 
 rdrive = "0.18"
 
-dma-api = {version = "0.6", path = "crates/dma-api"}
+dma-api = { version = "0.7", path = "crates/dma-api"}
 kasm-aarch64 = {path = "crates/kasm-aarch64", version = "0.2"}
 kernutil = {path = "crates/kernutil", version = "0.1"}
 page-table-generic = {path = "crates/page-table-generic", version = "0.7"}
