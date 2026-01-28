@@ -1,5 +1,6 @@
 use core::sync::atomic::AtomicBool;
 
+use kernutil::StaticCell;
 use page_table_generic::PageTable;
 pub use page_table_generic::{PagingError, PagingResult};
 
@@ -9,7 +10,7 @@ pub type ArchPageTable<A> = PageTable<<crate::arch::Arch as crate::ArchTrait>::P
 
 pub type ArchPte = <<crate::arch::Arch as crate::ArchTrait>::P as page_table_generic::TableMeta>::P;
 
-static BOOT_TABLE: spin::Once<ArchPageTable<Ram>> = spin::Once::new();
+static BOOT_TABLE: StaticCell<ArchPageTable<Ram>> = StaticCell::uninit();
 static MMU_ENABLED: AtomicBool = AtomicBool::new(false);
 
 pub(crate) fn new_boot_table() -> ArchPageTable<Ram> {
@@ -23,7 +24,7 @@ pub fn new_page_table<A: page_table_generic::FrameAllocator>(
 }
 
 pub(crate) fn set_boot_table(table: ArchPageTable<Ram>) {
-    BOOT_TABLE.call_once(|| table);
+    BOOT_TABLE.init(table);
 }
 
 pub(crate) fn is_mmu_enabled() -> bool {
