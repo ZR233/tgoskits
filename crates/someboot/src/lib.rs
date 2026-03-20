@@ -60,6 +60,7 @@ use crate::{
 #[allow(unused)]
 pub trait ArchTrait {
     type P: TableMeta;
+    type Console: console::ArchConsoleOps;
 
     fn _va(paddr: usize) -> *mut u8;
     fn _io(paddr: usize) -> *mut u8 {
@@ -175,7 +176,9 @@ fn prime_entry() -> ! {
     }
 
     let entry = __someboot_main as *const () as usize;
-    let sp = crate::smp::cpu_meta(0).unwrap().stack_top;
+    let sp = crate::smp::cpu_meta(crate::smp::cpu_idx())
+        .unwrap()
+        .stack_top;
     let sp = __percpu(sp);
     println!(
         "Jumping to main entry point at {:#x} with SP {:#p}",
