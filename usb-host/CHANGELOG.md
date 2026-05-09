@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1](https://github.com/drivercraft/CrabUSB/compare/crab-usb-v0.9.0...crab-usb-v0.9.1) - 2026-05-09
+
+### Other
+
+- *(crab-usb)* change queue logic ([#79](https://github.com/drivercraft/CrabUSB/pull/79))
+
 ## [0.9.0](https://github.com/drivercraft/CrabUSB/compare/crab-usb-v0.8.2...crab-usb-v0.9.0) - 2026-05-08
 
 ### Fixed
