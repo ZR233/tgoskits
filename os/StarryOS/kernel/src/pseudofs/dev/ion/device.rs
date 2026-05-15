@@ -4,7 +4,6 @@ use alloc::sync::Arc;
 use core::any::Any;
 
 use ax_errno::AxError;
-use starry_vm::{VmMutPtr, VmPtr};
 use ax_memory_addr::PhysAddrRange;
 use axfs_ng_vfs::{NodeFlags, VfsResult};
 use sg2002_tpu::ion::{
@@ -12,6 +11,7 @@ use sg2002_tpu::ion::{
     IonHeapManager, IonHeapQuery, IonHeapType, MAX_HEAP_NAME,
     ioctl::{ION_IOC_ALLOC, ION_IOC_FREE, ION_IOC_HEAP_QUERY, ION_IOC_IMPORT},
 };
+use starry_vm::{VmMutPtr, VmPtr};
 
 use super::global_ion_buffer_manager;
 use crate::{
@@ -41,8 +41,11 @@ impl IonDevice {
         debug!("Processing ION_IOC_ALLOC");
 
         // 从用户空间读取分配数据
-        let alloc_data =
-            unsafe { (user_ptr as *const IonAllocData).vm_read_uninit()?.assume_init() };
+        let alloc_data = unsafe {
+            (user_ptr as *const IonAllocData)
+                .vm_read_uninit()?
+                .assume_init()
+        };
 
         debug!(
             "Alloc request: len={}, heap_id_mask=0x{:x}, flags=0x{:x}",
@@ -103,8 +106,11 @@ impl IonDevice {
         debug!("Processing ION_IOC_FREE");
 
         // 从用户空间读取句柄数据
-        let handle_data =
-            unsafe { (user_ptr as *const IonHandleData).vm_read_uninit()?.assume_init() };
+        let handle_data = unsafe {
+            (user_ptr as *const IonHandleData)
+                .vm_read_uninit()?
+                .assume_init()
+        };
 
         let handle = IonHandle(handle_data.handle);
         debug!("Releasing buffer with handle: {:?}", handle);
@@ -131,8 +137,11 @@ impl IonDevice {
         debug!("Processing ION_IOC_IMPORT");
 
         // 从用户空间读取 FD 数据
-        let fd_data =
-            unsafe { (user_ptr as *const IonFdData).vm_read_uninit()?.assume_init() };
+        let fd_data = unsafe {
+            (user_ptr as *const IonFdData)
+                .vm_read_uninit()?
+                .assume_init()
+        };
 
         debug!("Import request: fd={}", fd_data.fd);
 
@@ -157,8 +166,11 @@ impl IonDevice {
         debug!("Processing ION_IOC_HEAP_QUERY");
 
         // 从用户空间读取查询数据
-        let mut heap_query =
-            unsafe { (user_ptr as *const IonHeapQuery).vm_read_uninit()?.assume_init() };
+        let mut heap_query = unsafe {
+            (user_ptr as *const IonHeapQuery)
+                .vm_read_uninit()?
+                .assume_init()
+        };
 
         debug!(
             "Heap query request: cnt={}, heaps=0x{:x}",
