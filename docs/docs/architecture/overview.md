@@ -94,6 +94,14 @@ Axvisor 是基于 ArceOS 的统一组件化 Type-I Hypervisor，建立在 ArceOS
 
 → 详细架构见 [Axvisor 架构](./axvisor)
 
+## 驱动框架重构方向
+
+宿主物理设备路径正在收敛到 `rdrive + rdif`。这个方向将静态平台、FDT 动态平台和未来 ACPI 平台放进同一套 `rdrive` 注册与 probe 主线，并让文件系统、网络、显示、输入、vsock、StarryOS 和 Axvisor 直接消费 `rdif-*` / `rd-*` 设备。
+
+本轮重构不迁移 `axdevice` / `axdevice_base`。它们继续作为 Axvisor / axvm 的 guest emulated device model，与宿主物理设备路径保持边界。
+
+→ 详细设计见 [rdrive + rdif 驱动框架](./rdrive-rdif)
+
 ## 核心层次
 
 TGOSKits 按职责将 crate 组织为六个核心层次和一个辅助层，每一层都面向明确的职责边界。上层依赖下层，但下层不感知上层——这一原则使得同一套组件可以同时服务于多个系统。
