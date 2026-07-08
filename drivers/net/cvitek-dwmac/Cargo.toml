@@ -1,0 +1,16 @@
+[package]
+name = "cvitek-dwmac"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Portable CVitek DWMAC ethernet core"
+keywords = ["cvitek", "dwmac", "ethernet", "driver"]
+categories = ["embedded", "hardware-support", "no-std"]
+
+[dependencies]
+dma-api.workspace = true
+log.workspace = true
+mmio-api.workspace = true
+rdif-eth.workspace = true

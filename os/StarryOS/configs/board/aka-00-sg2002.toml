@@ -2,6 +2,7 @@ features = [
   "starry-kernel/sg2002",
   "axplat-dyn/thead-mae",
   "ax-driver/cvsd",
+  "ax-driver/cvitek-dwmac",
   "ax-driver/serial",
 ]
 log = "Info"

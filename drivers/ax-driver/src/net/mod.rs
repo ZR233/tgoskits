@@ -2,6 +2,8 @@ mod binding;
 
 #[cfg(feature = "aic8800-wifi")]
 pub mod aic8800;
+#[cfg(feature = "cvitek-dwmac")]
+pub mod cvitek_dwmac;
 #[cfg(feature = "fxmac")]
 pub mod fxmac;
 #[cfg(feature = "intel-net")]

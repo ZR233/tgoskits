@@ -262,6 +262,7 @@ usb-serial = { version = "0.1.1", path = "drivers/usb/usb-serial" }
 dwmmc-host = { version = "0.3.1", path = "drivers/blk/dwmmc-host", default-features = false }
 phytium-mci-host = { version = "0.3.1", path = "drivers/blk/phytium-mci-host", default-features = false }
 cv181x-sdhci = { version = "0.1.1", path = "drivers/blk/cv181x-sdhci", default-features = false }
+cvitek-dwmac = { version = "0.1.0", path = "drivers/net/cvitek-dwmac" }
 sdhci-host = { version = "0.4.0", path = "drivers/blk/sdhci-host", default-features = false }
 sdmmc-protocol = { version = "0.4.0", path = "drivers/blk/sdmmc-protocol", default-features = false }
 starfive-jh7110-dwmmc = { version = "0.1.1", path = "drivers/blk/starfive-jh7110-dwmmc", default-features = false }

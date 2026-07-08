@@ -659,6 +659,7 @@ dependencies = [
  "bcm2835-sdhci",
  "crab-usb",
  "cv181x-sdhci",
+ "cvitek-dwmac",
  "dma-api",
  "dwmmc-host",
  "eth-intel",
@@ -2601,6 +2602,16 @@ dependencies = [
  "sdhci-host",
  "sdio-host2",
  "sdmmc-protocol",
+]
+
+[[package]]
+name = "cvitek-dwmac"
+version = "0.1.0"
+dependencies = [
+ "dma-api",
+ "log",
+ "mmio-api",
+ "rdif-eth",
 ]
 
 [[package]]
