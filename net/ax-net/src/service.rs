@@ -425,14 +425,33 @@ impl DhcpState {
             return None;
         }
 
-        let parsed = parse_dhcp_packet(packet)?;
+        let Some(parsed) = parse_dhcp_packet(packet) else {
+            self.log_dhcp_candidate_drop(packet, "parse");
+            return None;
+        };
         if parsed.udp.src_port != DHCP_SERVER_PORT || parsed.udp.dst_port != DHCP_CLIENT_PORT {
+            info!(
+                "{}: DHCP drop ports src={} dst={} phase={:?}",
+                self.ifname, parsed.udp.src_port, parsed.udp.dst_port, self.phase
+            );
             return None;
         }
 
         if parsed.client_hardware_address != self.mac
             || parsed.transaction_id != self.transaction_id
         {
+            info!(
+                "{}: DHCP drop identity msg={:?} xid={:#010x}/{:#010x} chaddr={}/{} yiaddr={} \
+                 src={}",
+                self.ifname,
+                parsed.message_type,
+                parsed.transaction_id,
+                self.transaction_id,
+                parsed.client_hardware_address,
+                self.mac,
+                parsed.your_ip,
+                parsed.src_addr
+            );
             return None;
         }
 
@@ -486,6 +505,56 @@ impl DhcpState {
             }
             _ => None,
         }
+    }
+
+    fn log_dhcp_candidate_drop(&self, packet: &[u8], reason: &str) {
+        let Ok(ipv4_packet) = Ipv4Packet::new_checked(packet) else {
+            return;
+        };
+        if ipv4_packet.next_header() != IpProtocol::Udp {
+            return;
+        }
+        let Ok(udp_packet) = UdpPacket::new_checked(ipv4_packet.payload()) else {
+            info!(
+                "{}: DHCP candidate drop={} bad-udp ip {} -> {} packet_len={} total_len={}",
+                self.ifname,
+                reason,
+                ipv4_packet.src_addr(),
+                ipv4_packet.dst_addr(),
+                packet.len(),
+                ipv4_packet.total_len()
+            );
+            return;
+        };
+        let src = udp_packet.src_port();
+        let dst = udp_packet.dst_port();
+        if !matches!(
+            (src, dst),
+            (DHCP_SERVER_PORT, DHCP_CLIENT_PORT) | (DHCP_CLIENT_PORT, DHCP_SERVER_PORT)
+        ) {
+            return;
+        }
+        info!(
+            "{}: DHCP candidate drop={} ip {} -> {} packet_len={} total_len={} ip_ok={} udp {} -> \
+             {} udp_len={} udp_csum={:#06x} udp_ok={} payload_len={} phase={:?}",
+            self.ifname,
+            reason,
+            ipv4_packet.src_addr(),
+            ipv4_packet.dst_addr(),
+            packet.len(),
+            ipv4_packet.total_len(),
+            ipv4_packet.verify_checksum(),
+            src,
+            dst,
+            udp_packet.len(),
+            udp_packet.checksum(),
+            udp_packet.verify_checksum(
+                &IpAddress::Ipv4(ipv4_packet.src_addr()),
+                &IpAddress::Ipv4(ipv4_packet.dst_addr())
+            ),
+            udp_packet.payload().len(),
+            self.phase
+        );
     }
 
     fn poll_packet(&mut self, timestamp: Instant) -> Option<(usize, IpAddress, Vec<u8>)> {
@@ -1082,7 +1151,7 @@ fn build_dhcp_packet(
         router: None,
         subnet_mask: None,
         relay_agent_ip: Ipv4Address::UNSPECIFIED,
-        broadcast: false,
+        broadcast: true,
         requested_ip,
         client_identifier: Some(mac),
         server_identifier,

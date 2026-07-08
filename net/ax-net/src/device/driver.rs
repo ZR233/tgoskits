@@ -272,6 +272,10 @@ impl EthernetDriver for RdNetDriver {
     fn transmit(&mut self, tx_buf: &mut dyn NetTxBuffer) -> NetDeviceResult {
         let packet_len = tx_buf.packet_len();
         let tx_len = packet_len.max(ETH_ZLEN);
+        info!(
+            "{}: rd-net transmit packet_len={} tx_len={}",
+            self.name, packet_len, tx_len
+        );
         let mut state = self.state.lock();
         let (_ret, mut pending) = state
             .tx_queue

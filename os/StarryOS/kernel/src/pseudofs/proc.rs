@@ -12,12 +12,19 @@ use core::{
     fmt::Write,
     iter,
     mem::size_of,
+    net::{Ipv4Addr, SocketAddr},
     sync::atomic::{AtomicUsize, Ordering},
+    time::Duration,
 };
 
+use ax_errno::AxError;
 use ax_fs_ng::vfs::FS_CONTEXT;
 use ax_lazyinit::LazyInit;
 use ax_memory_addr::{MemoryAddr, VirtAddr};
+use ax_net::{
+    RecvFlags, RecvOptions, SendOptions, SocketAddrEx, SocketOps,
+    raw::{IpProtocol, IpVersion, RawSocket},
+};
 #[cfg(target_arch = "aarch64")]
 use ax_runtime::hal::pmu;
 use ax_runtime::hal::{
@@ -390,6 +397,199 @@ fn render_proc_net_dev() -> String {
         );
     }
     buf
+}
+
+fn render_proc_net_sg2002_ping() -> String {
+    let peer = Ipv4Addr::new(192, 168, 1, 2);
+    run_proc_net_icmp_echo("eth0", peer, Duration::from_secs(5))
+}
+
+fn proc_net_stats_snapshot(ifname: &str) -> Option<(u64, u64, u64, u64)> {
+    ax_net::net_dev_stats()
+        .into_iter()
+        .find(|st| st.name == ifname)
+        .map(|st| (st.rx_packets, st.tx_packets, st.rx_bytes, st.tx_bytes))
+}
+
+fn write_proc_net_stats(buf: &mut String, prefix: &str, stats: Option<(u64, u64, u64, u64)>) {
+    match stats {
+        Some((rx_packets, tx_packets, rx_bytes, tx_bytes)) => {
+            let _ = writeln!(
+                buf,
+                "{prefix} rx_packets={rx_packets} tx_packets={tx_packets} rx_bytes={rx_bytes} \
+                 tx_bytes={tx_bytes}"
+            );
+        }
+        None => {
+            let _ = writeln!(buf, "{prefix} unavailable");
+        }
+    }
+}
+
+fn run_proc_net_icmp_echo(ifname: &str, peer: Ipv4Addr, timeout: Duration) -> String {
+    let mut report = String::new();
+    let before = proc_net_stats_snapshot(ifname);
+    write_proc_net_stats(&mut report, "STARRY_SG2002_NET_KERNEL_PING_BEFORE", before);
+
+    let interface = match ax_net::interface_by_name(ifname) {
+        Some(interface) => interface,
+        None => {
+            let _ = writeln!(
+                report,
+                "STARRY_SG2002_NET_KERNEL_PING_FAILED peer={peer} stage=lookup err={:?}",
+                AxError::NoSuchDevice
+            );
+            return report;
+        }
+    };
+    let socket = RawSocket::new(IpVersion::Ipv4, IpProtocol::Icmp);
+    if let Err(err) = socket.bind_device(interface.id) {
+        let _ = writeln!(
+            report,
+            "STARRY_SG2002_NET_KERNEL_PING_FAILED peer={peer} stage=bind err={err:?}"
+        );
+        return report;
+    }
+
+    let ident = 0x2002;
+    let seq = 1;
+    let request = build_icmp_echo_request(ident, seq);
+    let tx = request.as_slice();
+    let sent = match socket.send(
+        tx,
+        SendOptions {
+            to: Some(SocketAddrEx::Ip(SocketAddr::new(peer.into(), 0))),
+            ..Default::default()
+        },
+    ) {
+        Ok(sent) => sent,
+        Err(err) => {
+            write_proc_net_stats(
+                &mut report,
+                "STARRY_SG2002_NET_KERNEL_PING_AFTER_SEND_ERR",
+                proc_net_stats_snapshot(ifname),
+            );
+            let _ = writeln!(
+                report,
+                "STARRY_SG2002_NET_KERNEL_PING_FAILED peer={peer} stage=send err={err:?}"
+            );
+            return report;
+        }
+    };
+    write_proc_net_stats(
+        &mut report,
+        "STARRY_SG2002_NET_KERNEL_PING_AFTER_SEND",
+        proc_net_stats_snapshot(ifname),
+    );
+    let _ = writeln!(
+        report,
+        "STARRY_SG2002_NET_KERNEL_PING_SENT peer={peer} sent={sent}"
+    );
+
+    let deadline = monotonic_time() + timeout;
+    let mut attempts = 0usize;
+    let mut last_recv = 0usize;
+    while monotonic_time() < deadline {
+        attempts += 1;
+        let mut rx = [0u8; 1536];
+        match socket.recv(
+            &mut rx[..],
+            RecvOptions {
+                flags: RecvFlags::DONTWAIT,
+                ..Default::default()
+            },
+        ) {
+            Ok(recv) => {
+                last_recv = recv;
+                if icmp_echo_reply_matches(&rx[..recv], peer.octets(), ident, seq) {
+                    write_proc_net_stats(
+                        &mut report,
+                        "STARRY_SG2002_NET_KERNEL_PING_AFTER_RECV",
+                        proc_net_stats_snapshot(ifname),
+                    );
+                    let _ = writeln!(
+                        report,
+                        "STARRY_SG2002_NET_KERNEL_PING_OK peer={peer} sent={sent} recv={recv} \
+                         attempts={attempts}"
+                    );
+                    return report;
+                }
+            }
+            Err(AxError::WouldBlock) => {}
+            Err(err) => {
+                write_proc_net_stats(
+                    &mut report,
+                    "STARRY_SG2002_NET_KERNEL_PING_AFTER_RECV_ERR",
+                    proc_net_stats_snapshot(ifname),
+                );
+                let _ = writeln!(
+                    report,
+                    "STARRY_SG2002_NET_KERNEL_PING_FAILED peer={peer} stage=recv sent={sent} \
+                     attempts={attempts} last_recv={last_recv} err={err:?}"
+                );
+                return report;
+            }
+        }
+        ax_task::sleep(Duration::from_millis(20));
+    }
+
+    write_proc_net_stats(
+        &mut report,
+        "STARRY_SG2002_NET_KERNEL_PING_AFTER_TIMEOUT",
+        proc_net_stats_snapshot(ifname),
+    );
+    let _ = writeln!(
+        report,
+        "STARRY_SG2002_NET_KERNEL_PING_FAILED peer={peer} stage=recv sent={sent} \
+         attempts={attempts} last_recv={last_recv} err={:?}",
+        AxError::TimedOut
+    );
+    report
+}
+
+fn build_icmp_echo_request(ident: u16, seq: u16) -> Vec<u8> {
+    let mut packet = b"\x08\x00\x00\x00\x00\x00\x00\x00sg2002-net-smoke".to_vec();
+    packet[4..6].copy_from_slice(&ident.to_be_bytes());
+    packet[6..8].copy_from_slice(&seq.to_be_bytes());
+    let checksum = internet_checksum(&packet);
+    packet[2..4].copy_from_slice(&checksum.to_be_bytes());
+    packet
+}
+
+fn icmp_echo_reply_matches(packet: &[u8], peer: [u8; 4], ident: u16, seq: u16) -> bool {
+    let icmp = if packet.len() >= 20 && packet[0] >> 4 == 4 {
+        let header_len = usize::from(packet[0] & 0x0f) * 4;
+        if packet.len() < header_len + 8 || packet[9] != u8::from(IpProtocol::Icmp) {
+            return false;
+        }
+        if packet[12..16] != peer {
+            return false;
+        }
+        &packet[header_len..]
+    } else {
+        packet
+    };
+
+    icmp.len() >= 8
+        && icmp[0] == 0
+        && icmp[1] == 0
+        && u16::from_be_bytes([icmp[4], icmp[5]]) == ident
+        && u16::from_be_bytes([icmp[6], icmp[7]]) == seq
+}
+
+fn internet_checksum(packet: &[u8]) -> u16 {
+    let mut sum = 0u32;
+    let mut chunks = packet.chunks_exact(2);
+    for chunk in &mut chunks {
+        sum += u16::from_be_bytes([chunk[0], chunk[1]]) as u32;
+    }
+    if let Some(&byte) = chunks.remainder().first() {
+        sum += u16::from_be_bytes([byte, 0]) as u32;
+    }
+    while sum >> 16 != 0 {
+        sum = (sum & 0xffff) + (sum >> 16);
+    }
+    !(sum as u16)
 }
 
 /// Block-device major reported for the root virtio-blk disk (`vda`) in
@@ -1578,6 +1778,10 @@ fn builder(fs: Arc<SimpleFs>) -> DirMaker {
         net.add(
             "dev",
             SimpleFile::new_regular(fs.clone(), || Ok(render_proc_net_dev())),
+        );
+        net.add(
+            "sg2002_ping",
+            SimpleFile::new_regular(fs.clone(), || Ok(render_proc_net_sg2002_ping())),
         );
 
         SimpleDir::new_maker(fs.clone(), Arc::new(net))

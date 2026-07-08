@@ -60,7 +60,7 @@ use smoltcp::{
     time::Instant,
     wire::{
         IpAddress, IpCidr, IpProtocol, IpVersion, Ipv4Address, Ipv4Cidr, Ipv4Packet, Ipv6Packet,
-        TcpPacket,
+        TcpPacket, UdpPacket,
     },
 };
 
@@ -359,6 +359,13 @@ impl DeviceHandle {
             return false;
         }
         self.count_tx(packet.len());
+        info!(
+            "{}: router enqueue TX next_hop={} len={} queued={}",
+            self.name,
+            next_hop,
+            packet.len(),
+            self.tx_queue.len.load(Ordering::Acquire)
+        );
         self.tx_wake.notify_one(true);
         true
     }
@@ -707,6 +714,7 @@ impl Router {
             let bytes = packet.bytes.as_slice();
             snoop_tcp_packet(bytes, sockets);
             snoop(packet.interface_id, bytes);
+            log_router_rx_packet(packet.interface_id, bytes);
             let Ok(dst) = self
                 .rx_buffer
                 .enqueue(bytes.len(), rx_metadata(packet.interface_id, bytes))
@@ -840,6 +848,58 @@ impl Router {
     }
 }
 
+fn log_router_rx_packet(interface_id: InterfaceId, packet: &[u8]) {
+    match IpVersion::of_packet(packet) {
+        Ok(IpVersion::Ipv4) => {
+            let ipv4 = Ipv4Packet::new_unchecked(packet);
+            if ipv4.next_header() == IpProtocol::Udp {
+                let udp = UdpPacket::new_unchecked(ipv4.payload());
+                info!(
+                    "router RX if={:?} ipv4 {} -> {} proto={:?} packet_len={} total_len={} udp {} \
+                     -> {} udp_len={} csum={:#06x}",
+                    interface_id,
+                    ipv4.src_addr(),
+                    ipv4.dst_addr(),
+                    ipv4.next_header(),
+                    packet.len(),
+                    ipv4.total_len(),
+                    udp.src_port(),
+                    udp.dst_port(),
+                    udp.len(),
+                    udp.checksum()
+                );
+            } else {
+                info!(
+                    "router RX if={:?} ipv4 {} -> {} proto={:?} packet_len={} total_len={}",
+                    interface_id,
+                    ipv4.src_addr(),
+                    ipv4.dst_addr(),
+                    ipv4.next_header(),
+                    packet.len(),
+                    ipv4.total_len()
+                );
+            }
+        }
+        Ok(IpVersion::Ipv6) => {
+            let ipv6 = Ipv6Packet::new_unchecked(packet);
+            info!(
+                "router RX if={:?} ipv6 {} -> {} next={:?} packet_len={}",
+                interface_id,
+                ipv6.src_addr(),
+                ipv6.dst_addr(),
+                ipv6.next_header(),
+                packet.len()
+            );
+        }
+        Err(_) => warn!(
+            "router RX if={:?} non-IP packet len={} head={:02x?}",
+            interface_id,
+            packet.len(),
+            &packet[..packet.len().min(16)]
+        ),
+    }
+}
+
 fn dispatch_link_local_fanout(
     devices: &[Arc<DeviceHandle>],
     dst_addr: IpAddress,
@@ -881,6 +941,14 @@ fn dispatch_unicast_packet(
         dev.count_rx(packet.len());
         inject_loopback_rx_direct(rx_buffer, dst_addr, packet, sockets)
     } else {
+        info!(
+            "{}: dispatch unicast src={} dst={} next_hop={} len={}",
+            dev.name,
+            src_addr,
+            dst_addr,
+            route.next_hop,
+            packet.len()
+        );
         dev.enqueue_tx(route.next_hop, packet)
     }
 }
@@ -934,11 +1002,21 @@ fn inject_loopback_rx(
 fn device_tx_worker(device: Arc<DeviceHandle>) {
     loop {
         if let Some(packet) = device.tx_queue.pop() {
+            info!(
+                "{}: TX worker pop next_hop={} len={}",
+                device.name,
+                packet.next_hop,
+                packet.bytes.as_slice().len()
+            );
             let poll_next =
                 device
                     .inner
                     .lock()
                     .send(packet.next_hop, packet.bytes.as_slice(), now());
+            info!(
+                "{}: TX worker send_done poll_next={}",
+                device.name, poll_next
+            );
             if poll_next {
                 crate::request_poll();
             }
@@ -1013,6 +1091,7 @@ impl smoltcp::phy::TxToken for TxToken<'_> {
     {
         // TX metadata is ignored: Router::dispatch parses the emitted IP
         // packet and selects the actual egress interface from the route table.
+        info!("Router TxToken consume len={}", len);
         f(self
             .0
             .enqueue(len, tx_metadata())

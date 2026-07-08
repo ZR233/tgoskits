@@ -35,6 +35,7 @@ use crate::{
 pub fn sys_socket(domain: u32, raw_ty: u32, proto: u32) -> AxResult<isize> {
     debug!("sys_socket <= domain: {domain}, ty: {raw_ty}, proto: {proto}");
     let ty = raw_ty & 0xFF;
+    info!("sys_socket domain={domain} ty={ty} raw_ty={raw_ty:#x} proto={proto}");
 
     if domain == AF_PACKET {
         if ty != SOCK_DGRAM {
@@ -45,6 +46,7 @@ pub fn sys_socket(domain: u32, raw_ty: u32, proto: u32) -> AxResult<isize> {
             return Err(AxError::from(LinuxError::EPERM));
         }
         let socket = PacketSocket::new(proto as u16)?;
+        info!("created AF_PACKET socket proto={proto:#x}");
         if raw_ty & O_NONBLOCK != 0 {
             socket.set_nonblocking(true)?;
         }
@@ -68,6 +70,10 @@ pub fn sys_socket(domain: u32, raw_ty: u32, proto: u32) -> AxResult<isize> {
         }
         (AF_INET | AF_INET6, SOCK_DGRAM) => {
             if proto != 0 && proto != IPPROTO_UDP as _ {
+                info!(
+                    "reject datagram IP socket domain={domain} proto={proto}: only UDP is \
+                     supported"
+                );
                 return Err(AxError::from(LinuxError::EPROTONOSUPPORT));
             }
             UdpSocket::new().into()
@@ -93,11 +99,14 @@ pub fn sys_socket(domain: u32, raw_ty: u32, proto: u32) -> AxResult<isize> {
         (AF_VSOCK, SOCK_STREAM) => VsockSocket::new().into(),
         (AF_INET, SOCK_RAW) => {
             if proto != IPPROTO_ICMP as u32 {
+                info!("reject raw IPv4 socket proto={proto}: only ICMP is supported");
                 return Err(AxError::from(LinuxError::EPROTONOSUPPORT));
             }
             if !current().as_thread().cred().has_cap_net_raw() {
+                info!("reject raw IPv4 ICMP socket: CAP_NET_RAW missing");
                 return Err(AxError::from(LinuxError::EPERM));
             }
+            info!("created raw IPv4 ICMP socket");
             SocketInner::Raw(Box::new(RawSocket::new(IpVersion::Ipv4, IpProtocol::Icmp)))
         }
         (AF_INET | AF_INET6, _) | (AF_UNIX, _) | (AF_NETLINK, _) | (AF_VSOCK, _) => {

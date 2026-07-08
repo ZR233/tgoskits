@@ -163,12 +163,21 @@ impl PacketSocket {
         data.truncate(read);
 
         let bound = self.state.lock().bound;
+        info!(
+            "packet socket send len={} proto={:#x} ifindex={}",
+            read,
+            u16::from_be(bound.sll_protocol),
+            bound.sll_ifindex
+        );
         if let Some(reply) = build_arp_reply(&data, bound) {
+            info!("packet socket synthesized ARP reply len={}", reply.0.len());
             {
                 self.state.lock().pending = Some(reply);
             }
             // Pending packet is stored before waking readers.
             unsafe { self.poll_rx.wake(IoEvents::IN) };
+        } else {
+            info!("packet socket send has no synthetic reply");
         }
         Ok(read)
     }

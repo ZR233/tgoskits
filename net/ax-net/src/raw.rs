@@ -390,6 +390,13 @@ impl SocketOps for RawSocket {
         let payload_len = src.remaining();
         let extra_nb = options.flags.contains(crate::SendFlags::DONTWAIT);
         let loopback_ipv4 = self.ip_version == IpVersion::Ipv4 && is_loopback_address(remote);
+        info!(
+            "raw socket send remote={} local={} payload_len={} binding={:?}",
+            remote,
+            local,
+            payload_len,
+            self.general.device_binding()
+        );
 
         self.general.send_poller_with(self, extra_nb, || {
             request_poll();
@@ -403,6 +410,11 @@ impl SocketOps for RawSocket {
                 let header =
                     self.outgoing_ip_header(local, remote, next_header, payload_len, hop_limit);
                 let header_len = header.buffer_len();
+                info!(
+                    "raw socket queue ip packet remote={} local={} protocol={:?} header_len={} \
+                     payload_len={}",
+                    remote, local, next_header, header_len, payload_len
+                );
 
                 let buf = socket
                     .send(header_len + payload_len)
@@ -428,6 +440,12 @@ impl SocketOps for RawSocket {
                 {
                     *self.loopback_rx.lock() = Some((local, reply));
                 }
+                info!(
+                    "raw socket queued protocol={:?} written={} total_len={}",
+                    next_header,
+                    written,
+                    header_len + written
+                );
                 Ok(written)
             })?;
             request_poll();

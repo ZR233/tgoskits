@@ -30,8 +30,9 @@ use smoltcp::{
     storage::{PacketBuffer, PacketMetadata},
     time::{Duration, Instant},
     wire::{
-        ArpOperation, ArpPacket, ArpRepr, EthernetAddress, EthernetFrame, EthernetProtocol,
-        EthernetRepr, IpAddress, Ipv4Cidr,
+        ArpOperation, ArpPacket, ArpRepr, DHCP_CLIENT_PORT, DHCP_SERVER_PORT, DhcpPacket, DhcpRepr,
+        EthernetAddress, EthernetFrame, EthernetProtocol, EthernetRepr, IpAddress, IpProtocol,
+        Ipv4Cidr, Ipv4Packet, UdpPacket,
     },
 };
 
@@ -42,6 +43,26 @@ use crate::{
 };
 
 const EMPTY_MAC: EthernetAddress = EthernetAddress([0; 6]);
+const RX_FRAME_LOG_BUDGET: u8 = 8;
+const ETHERTYPE_8021Q: u16 = 0x8100;
+const ETHERTYPE_8021AD: u16 = 0x88a8;
+const VLAN_HEADER_LEN: usize = 4;
+
+fn ethernet_payload_protocol(
+    ethertype: EthernetProtocol,
+    payload: &[u8],
+) -> Option<(EthernetProtocol, &[u8])> {
+    match ethertype {
+        EthernetProtocol::Unknown(ETHERTYPE_8021Q | ETHERTYPE_8021AD) => {
+            if payload.len() < VLAN_HEADER_LEN {
+                return None;
+            }
+            let inner = u16::from_be_bytes([payload[2], payload[3]]);
+            Some((EthernetProtocol::from(inner), &payload[VLAN_HEADER_LEN..]))
+        }
+        protocol => Some((protocol, payload)),
+    }
+}
 
 pub trait EthernetIrqRegistration: Send + Sync {}
 
@@ -126,6 +147,7 @@ pub struct EthernetDevice {
     neighbors: HashMap<IpAddress, Neighbor>,
     pending_neighbors: HashMap<IpAddress, PendingNeighbor>,
     ip: Option<Ipv4Cidr>,
+    rx_log_budget: u8,
 
     pending_packets: PacketBuffer<'static, IpAddress>,
 }
@@ -226,6 +248,7 @@ impl EthernetDevice {
             neighbors: HashMap::new(),
             pending_neighbors: HashMap::new(),
             ip,
+            rx_log_budget: RX_FRAME_LOG_BUDGET,
 
             pending_packets,
         }
@@ -263,9 +286,20 @@ impl EthernetDevice {
                 return;
             }
         };
-        let mut frame = EthernetFrame::new_unchecked(tx_buf.packet_mut());
-        repr.emit(&mut frame);
-        f(frame.payload_mut());
+        {
+            let mut frame = EthernetFrame::new_unchecked(tx_buf.packet_mut());
+            repr.emit(&mut frame);
+            f(frame.payload_mut());
+        }
+        info!(
+            "{}: ethernet send proto={:?} dst={} payload_len={} frame_len={}",
+            inner.device_name(),
+            proto,
+            dst,
+            size,
+            tx_buf.packet_len()
+        );
+        log_tx_frame(inner.device_name(), tx_buf.packet());
         trace!(
             "SEND {} bytes: {:02X?}",
             tx_buf.packet_len(),
@@ -297,16 +331,22 @@ impl EthernetDevice {
             return false;
         }
 
-        match repr.ethertype {
+        let Some((ethertype, payload)) = ethernet_payload_protocol(repr.ethertype, frame.payload())
+        else {
+            warn!("Dropping short VLAN Ethernet frame");
+            return false;
+        };
+
+        match ethertype {
             EthernetProtocol::Ipv4 => {
-                snoop(frame.payload());
+                snoop(payload);
                 buffer
-                    .enqueue(frame.payload().len(), interface_id)
+                    .enqueue(payload.len(), interface_id)
                     .unwrap()
-                    .copy_from_slice(frame.payload());
+                    .copy_from_slice(payload);
                 return true;
             }
-            EthernetProtocol::Arp => self.process_arp(frame.payload(), timestamp),
+            EthernetProtocol::Arp => self.process_arp(payload, timestamp),
             _ => {}
         }
 
@@ -365,6 +405,15 @@ impl EthernetDevice {
             target_protocol_addr,
         } = repr
         {
+            info!(
+                "{}: ARP {:?} src={}({}) target={}({})",
+                self.name,
+                operation,
+                source_protocol_addr,
+                source_hardware_addr,
+                target_protocol_addr,
+                target_hardware_addr
+            );
             let is_unicast_mac =
                 target_hardware_addr != EMPTY_MAC && !target_hardware_addr.is_broadcast();
             if is_unicast_mac && self.hardware_address() != target_hardware_addr {
@@ -492,6 +541,172 @@ impl EthernetDevice {
     }
 }
 
+fn log_tx_frame(device_name: &str, packet: &[u8]) {
+    let frame = EthernetFrame::new_unchecked(packet);
+    match frame.ethertype() {
+        EthernetProtocol::Ipv4 => log_tx_ipv4(device_name, &frame),
+        EthernetProtocol::Arp => log_tx_arp(device_name, &frame),
+        protocol => info!(
+            "{}: ethernet TX frame {} -> {} proto={:?} len={} head={:02x?}",
+            device_name,
+            frame.src_addr(),
+            frame.dst_addr(),
+            protocol,
+            packet.len(),
+            &packet[..packet.len().min(32)]
+        ),
+    }
+}
+
+fn log_tx_ipv4(device_name: &str, frame: &EthernetFrame<&[u8]>) {
+    let Ok(ipv4) = Ipv4Packet::new_checked(frame.payload()) else {
+        warn!(
+            "{}: ethernet TX malformed IPv4 frame len={}",
+            device_name,
+            frame.as_ref().len()
+        );
+        return;
+    };
+    if ipv4.next_header() == IpProtocol::Udp {
+        let Ok(udp) = UdpPacket::new_checked(ipv4.payload()) else {
+            warn!(
+                "{}: ethernet TX malformed UDP {} -> {} total_len={} payload_len={}",
+                device_name,
+                ipv4.src_addr(),
+                ipv4.dst_addr(),
+                ipv4.total_len(),
+                ipv4.payload().len()
+            );
+            return;
+        };
+        info!(
+            "{}: ethernet TX IPv4/UDP {} -> {} mac {} -> {} packet_len={} total_len={} ip_ok={} \
+             udp {} -> {} udp_len={} udp_csum={:#06x} udp_ok={}",
+            device_name,
+            ipv4.src_addr(),
+            ipv4.dst_addr(),
+            frame.src_addr(),
+            frame.dst_addr(),
+            frame.as_ref().len(),
+            ipv4.total_len(),
+            ipv4.verify_checksum(),
+            udp.src_port(),
+            udp.dst_port(),
+            udp.len(),
+            udp.checksum(),
+            udp.verify_checksum(
+                &IpAddress::Ipv4(ipv4.src_addr()),
+                &IpAddress::Ipv4(ipv4.dst_addr())
+            )
+        );
+        if matches!(
+            (udp.src_port(), udp.dst_port()),
+            (DHCP_CLIENT_PORT, DHCP_SERVER_PORT) | (DHCP_SERVER_PORT, DHCP_CLIENT_PORT)
+        ) {
+            if let Ok(dhcp_packet) = DhcpPacket::new_checked(udp.payload()) {
+                match DhcpRepr::parse(&dhcp_packet) {
+                    Ok(dhcp) => info!(
+                        "{}: ethernet TX DHCP {:?} xid={:#010x} chaddr={} requested={:?} \
+                         server={:?}",
+                        device_name,
+                        dhcp.message_type,
+                        dhcp.transaction_id,
+                        dhcp.client_hardware_address,
+                        dhcp.requested_ip,
+                        dhcp.server_identifier
+                    ),
+                    Err(_) => warn!(
+                        "{}: ethernet TX DHCP parse failed payload_len={}",
+                        device_name,
+                        udp.payload().len()
+                    ),
+                }
+            } else {
+                warn!(
+                    "{}: ethernet TX DHCP parse failed payload_len={}",
+                    device_name,
+                    udp.payload().len()
+                );
+            }
+        }
+    } else {
+        info!(
+            "{}: ethernet TX IPv4 {} -> {} proto={:?} mac {} -> {} packet_len={} total_len={} \
+             ip_ok={}",
+            device_name,
+            ipv4.src_addr(),
+            ipv4.dst_addr(),
+            ipv4.next_header(),
+            frame.src_addr(),
+            frame.dst_addr(),
+            frame.as_ref().len(),
+            ipv4.total_len(),
+            ipv4.verify_checksum()
+        );
+    }
+}
+
+fn log_tx_arp(device_name: &str, frame: &EthernetFrame<&[u8]>) {
+    match ArpPacket::new_checked(frame.payload()).and_then(|packet| ArpRepr::parse(&packet)) {
+        Ok(ArpRepr::EthernetIpv4 {
+            operation,
+            source_hardware_addr,
+            source_protocol_addr,
+            target_hardware_addr,
+            target_protocol_addr,
+        }) => info!(
+            "{}: ethernet TX ARP {:?} mac {} -> {} src={}({}) target={}({})",
+            device_name,
+            operation,
+            frame.src_addr(),
+            frame.dst_addr(),
+            source_protocol_addr,
+            source_hardware_addr,
+            target_protocol_addr,
+            target_hardware_addr
+        ),
+        Ok(_) => info!(
+            "{}: ethernet TX unsupported ARP frame mac {} -> {} len={}",
+            device_name,
+            frame.src_addr(),
+            frame.dst_addr(),
+            EthernetFrame::<&[u8]>::header_len() + frame.payload().len()
+        ),
+        Err(_) => warn!(
+            "{}: ethernet TX malformed ARP frame len={}",
+            device_name,
+            frame.as_ref().len()
+        ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ethernet_payload_protocol_strips_8021q_ipv4() {
+        let payload = [0x12, 0x34, 0x08, 0x00, 0x45, 0x00];
+
+        let (protocol, inner) =
+            ethernet_payload_protocol(EthernetProtocol::Unknown(ETHERTYPE_8021Q), &payload)
+                .expect("vlan payload should be accepted");
+
+        assert_eq!(protocol, EthernetProtocol::Ipv4);
+        assert_eq!(inner, &[0x45, 0x00]);
+    }
+
+    #[test]
+    fn ethernet_payload_protocol_rejects_short_vlan() {
+        let payload = [0x12, 0x34, 0x08];
+
+        assert_eq!(
+            ethernet_payload_protocol(EthernetProtocol::Unknown(ETHERTYPE_8021Q), &payload),
+            None
+        );
+    }
+}
+
 impl Device for EthernetDevice {
     fn name(&self) -> &str {
         &self.name
@@ -522,6 +737,16 @@ impl Device for EthernetDevice {
                 rx_buf.packet_len(),
                 rx_buf.packet()
             );
+            if self.rx_log_budget > 0 {
+                let packet = rx_buf.packet();
+                info!(
+                    "{}: ethernet RX frame len={} head={:02x?}",
+                    self.name,
+                    rx_buf.packet_len(),
+                    &packet[..packet.len().min(14)]
+                );
+                self.rx_log_budget -= 1;
+            }
 
             let result = self.handle_frame(rx_buf.packet(), interface_id, buffer, timestamp, snoop);
             if let Err(err) = self.inner.driver.lock().recycle_rx_buffer(&mut *rx_buf) {
@@ -534,9 +759,22 @@ impl Device for EthernetDevice {
     }
 
     fn send(&mut self, next_hop: IpAddress, packet: &[u8], timestamp: Instant) -> bool {
+        info!(
+            "{}: ethernet TX request next_hop={} len={} ip={:?}",
+            self.name,
+            next_hop,
+            packet.len(),
+            self.ip
+        );
         let is_subnet_broadcast =
             self.ip.and_then(|ip| ip.broadcast()).map(IpAddress::Ipv4) == Some(next_hop);
         if next_hop.is_broadcast() || is_subnet_broadcast {
+            info!(
+                "{}: ethernet TX broadcast next_hop={} len={}",
+                self.name,
+                next_hop,
+                packet.len()
+            );
             let mut inner = self.inner.driver.lock();
             Self::send_to(
                 &mut **inner,
@@ -551,6 +789,13 @@ impl Device for EthernetDevice {
         let need_request = match self.neighbors.get(&next_hop) {
             Some(neighbor) if neighbor.expires_at > timestamp => {
                 let mut inner = self.inner.driver.lock();
+                info!(
+                    "{}: ethernet TX resolved next_hop={} mac={} len={}",
+                    self.name,
+                    next_hop,
+                    neighbor.hardware_address,
+                    packet.len()
+                );
                 Self::send_to(
                     &mut **inner,
                     neighbor.hardware_address,
@@ -581,6 +826,12 @@ impl Device for EthernetDevice {
             return false;
         };
         dst_buffer.copy_from_slice(packet);
+        info!(
+            "{}: queued pending IPv4 packet next_hop={} len={}",
+            self.name,
+            next_hop,
+            packet.len()
+        );
         false
     }
 

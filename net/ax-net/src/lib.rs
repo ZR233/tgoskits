@@ -159,7 +159,9 @@ static WIFI_CONTROLS: LazyLock<Mutex<Vec<(alloc::string::String, rd_net::WifiCon
 
 static NET_IRQ_NOTIFY: IrqNotify = IrqNotify::new();
 
-const DHCP_BOOTSTRAP_ATTEMPTS: usize = 200;
+// Physical MAC/PHY boards may deliver the first DHCP response several seconds
+// after link-up; keep startup bounded while avoiding a premature static fallback.
+const DHCP_BOOTSTRAP_ATTEMPTS: usize = 1000;
 const DHCP_BOOTSTRAP_POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 fn get_service() -> ax_sync::MutexGuard<'static, Service> {
