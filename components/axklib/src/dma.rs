@@ -195,6 +195,86 @@ impl DmaOp for KlibDma {
             unsafe { DmaPages::dealloc_pages(map_virt, num_pages) };
         }
     }
+
+    #[cfg(all(target_arch = "riscv64", feature = "thead-cache"))]
+    fn flush(&self, addr: NonNull<u8>, size: usize) {
+        thead_dma_fence();
+        thead_dma_wb_range(dma_addr_from_ptr(addr), size);
+    }
+
+    #[cfg(all(target_arch = "riscv64", feature = "thead-cache"))]
+    fn invalidate(&self, addr: NonNull<u8>, size: usize) {
+        thead_dma_wbinv_range(dma_addr_from_ptr(addr), size);
+        thead_dma_fence();
+    }
+
+    #[cfg(all(target_arch = "riscv64", feature = "thead-cache"))]
+    fn flush_invalidate(&self, addr: NonNull<u8>, size: usize) {
+        thead_dma_fence();
+        thead_dma_wbinv_range(dma_addr_from_ptr(addr), size);
+        thead_dma_fence();
+    }
+}
+
+#[cfg(any(test, all(target_arch = "riscv64", feature = "thead-cache")))]
+const DMA_CACHE_LINE_SIZE: u64 = 64;
+
+#[cfg(any(test, all(target_arch = "riscv64", feature = "thead-cache")))]
+fn dma_cache_line_range(addr: u64, size: usize) -> Option<(u64, u64)> {
+    if size == 0 {
+        return None;
+    }
+    let end = addr.checked_add(size as u64)?;
+    Some((addr & !(DMA_CACHE_LINE_SIZE - 1), end))
+}
+
+#[cfg(all(target_arch = "riscv64", feature = "thead-cache"))]
+fn thead_dma_wb_range(addr: u64, size: usize) {
+    thead_dma_cache_range(addr, size, TheadDmaCacheOp::Writeback);
+}
+
+#[cfg(all(target_arch = "riscv64", feature = "thead-cache"))]
+fn thead_dma_wbinv_range(addr: u64, size: usize) {
+    thead_dma_cache_range(addr, size, TheadDmaCacheOp::WritebackInvalidate);
+}
+
+#[cfg(all(target_arch = "riscv64", feature = "thead-cache"))]
+#[derive(Clone, Copy)]
+enum TheadDmaCacheOp {
+    Writeback,
+    WritebackInvalidate,
+}
+
+#[cfg(all(target_arch = "riscv64", feature = "thead-cache"))]
+fn thead_dma_cache_range(addr: u64, size: usize, op: TheadDmaCacheOp) {
+    let Some((mut line, end)) = dma_cache_line_range(addr, size) else {
+        return;
+    };
+
+    while line < end {
+        match op {
+            TheadDmaCacheOp::Writeback => unsafe {
+                // T-Head dcache.cpa a0: clean by physical address.
+                core::arch::asm!(".long 0x0295000b", in("a0") line as usize, options(nostack));
+            },
+            TheadDmaCacheOp::WritebackInvalidate => unsafe {
+                // T-Head dcache.cipa a0: clean and invalidate by physical address.
+                core::arch::asm!(".long 0x02b5000b", in("a0") line as usize, options(nostack));
+            },
+        }
+        line += DMA_CACHE_LINE_SIZE;
+    }
+    thead_sync_is();
+}
+
+#[cfg(all(target_arch = "riscv64", feature = "thead-cache"))]
+fn thead_dma_fence() {
+    unsafe { core::arch::asm!("fence rw, rw", options(nostack)) };
+}
+
+#[cfg(all(target_arch = "riscv64", feature = "thead-cache"))]
+fn thead_sync_is() {
+    unsafe { core::arch::asm!(".long 0x01b0000b", options(nostack)) };
 }
 
 fn dma_addr_from_ptr(ptr: NonNull<u8>) -> u64 {
@@ -218,4 +298,21 @@ fn dma_range_fits_mask(dma_addr: u64, size: usize, dma_mask: u64) -> bool {
 
 fn dma_addr_is_aligned(dma_addr: u64, align: usize) -> bool {
     dma_addr.is_multiple_of(align.max(1) as u64)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dma_cache_line_range_covers_unaligned_buffer() {
+        assert_eq!(dma_cache_line_range(0x1003, 1), Some((0x1000, 0x1004)));
+        assert_eq!(dma_cache_line_range(0x103f, 2), Some((0x1000, 0x1041)));
+    }
+
+    #[test]
+    fn dma_cache_line_range_skips_empty_and_overflow() {
+        assert_eq!(dma_cache_line_range(0x1000, 0), None);
+        assert_eq!(dma_cache_line_range(u64::MAX, 2), None);
+    }
 }
