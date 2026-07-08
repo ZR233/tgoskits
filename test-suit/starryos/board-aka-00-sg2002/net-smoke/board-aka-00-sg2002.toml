@@ -1,0 +1,113 @@
+board_type = "AKA-00-SG2002"
+kernel_load_addr = "0x80200000"
+fit_load_addr = "0x82200000"
+bootm_addr = "0x82200000"
+shell_prefix = "root@starry:"
+shell_init_cmd = '''
+printf '\nSTARRY_SG2002_NET_BEGIN\n'
+ok=1
+peer=192.168.1.2
+addr_ip=192.168.1.226
+addr=$addr_ip/24
+iface=
+
+for candidate in eth0 eth1 en0; do
+  if ip link show dev "$candidate" >/tmp/sg2002-iface 2>&1; then
+    iface=$candidate
+    break
+  fi
+done
+
+cat /proc/net/dev || ok=0
+if [ -z "$iface" ]; then
+  echo STARRY_SG2002_NET_NO_IFACE
+  cat /tmp/sg2002-iface
+  ok=0
+else
+  echo STARRY_SG2002_NET_IFACE=$iface
+  ip link set dev "$iface" up || ok=0
+  ip -o link show dev "$iface" || ok=0
+  if ip -o -4 addr show dev "$iface" | grep -q ' inet '; then
+    echo STARRY_SG2002_NET_ADDR_EXISTING
+  else
+    ip addr del "$addr" dev "$iface" >/tmp/sg2002-addr-cleanup 2>&1 || true
+    ip addr add "$addr" dev "$iface" || ok=0
+  fi
+  ip -o -4 addr show dev "$iface" || ok=0
+  ip route show || true
+
+  read_stats() {
+    line=$(grep "$1:" /proc/net/dev) || return 1
+    line=${line#*:}
+    set -- $line
+    rx_packets=$2
+    shift 9
+    echo "$rx_packets $1"
+  }
+
+  before=$(read_stats "$iface") || ok=0
+  set -- $before
+  rx_before=$1
+  tx_before=$2
+  echo STARRY_SG2002_NET_BEFORE_RX=$rx_before TX=$tx_before
+  echo STARRY_SG2002_NET_ARP_BEFORE
+  cat /proc/net/arp || ok=0
+  ip neigh show dev "$iface" || true
+
+  echo STARRY_SG2002_NET_KERNEL_PING_BEGIN
+  cat /proc/net/sg2002_ping > /tmp/sg2002-kping || ok=0
+  cat /tmp/sg2002-kping || ok=0
+  if grep -q '^STARRY_SG2002_NET_KERNEL_PING_OK' /tmp/sg2002-kping; then
+    echo STARRY_SG2002_NET_KERNEL_PING_OBSERVED
+  else
+    echo STARRY_SG2002_NET_KERNEL_PING_FAILED
+    ok=0
+  fi
+  echo STARRY_SG2002_NET_ARP_AFTER_KERNEL
+  cat /proc/net/arp || ok=0
+  ip neigh show dev "$iface" || true
+
+  if ping -I "$iface" -c 1 -W 5 "$peer"; then
+    echo STARRY_SG2002_NET_USER_PING_OK
+  else
+    echo STARRY_SG2002_NET_USER_PING_FAILED
+    ok=0
+  fi
+  echo STARRY_SG2002_NET_ARP_AFTER_USER
+  cat /proc/net/arp || ok=0
+  ip neigh show dev "$iface" || true
+
+  after=$(read_stats "$iface") || ok=0
+  set -- $after
+  rx_after=$1
+  tx_after=$2
+  echo STARRY_SG2002_NET_AFTER_RX=$rx_after TX=$tx_after
+  if [ "$tx_after" -le "$tx_before" ]; then
+    echo STARRY_SG2002_NET_TX_NO_PROGRESS
+    ok=0
+  fi
+  if [ "$rx_after" -le "$rx_before" ]; then
+    echo STARRY_SG2002_NET_RX_NO_PROGRESS
+    ok=0
+  fi
+fi
+
+if [ "$ok" = "1" ]; then
+  echo STARRY_SG2002_NET_SMOKE_OK
+else
+  echo STARRY_SG2002_NET_SMOKE_FAILED
+fi
+printf '\nSTARRY_SG2002_NET_DONE\n'
+'''
+success_regex = [
+  "(?m)^STARRY_SG2002_NET_SMOKE_OK\\s*$",
+]
+fail_regex = [
+  "(?i)\\bpanic(?:ked)?\\b",
+  "(?i)segmentation fault",
+  "(?i)SIGSEGV",
+  "exit with code: 139",
+  "(?i)(cat|sh|ip|ping|grep): .*not found",
+  "(?m)^STARRY_SG2002_NET_SMOKE_FAILED\\s*$",
+]
+timeout = 240
