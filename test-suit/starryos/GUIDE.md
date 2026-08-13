@@ -83,10 +83,11 @@ config，不放 `qemu-*.toml`。
 ### AArch64 CI 启动 smoke
 
 AArch64 CI 在运行 `cargo xtask starry test qemu --arch aarch64` 前，会先执行一次
-普通 `starry qemu` 启动，并通过
-`os/StarryOS/configs/qemu/qemu-aarch64-gicv2-boot.toml` 显式选择 GICv2 和 SMP1。
-这个 smoke 等待 shell 后输出唯一成功标记，用来覆盖 test-suit 的 GICv3/SMP4
-配置没有覆盖到的普通单核启动路径；它不是 `test-suit/starryos/` 下的可发现 case。
+带 `--smp 4` 的普通 `starry qemu` 启动，并通过
+`os/StarryOS/configs/qemu/qemu-aarch64-gicv2-boot.toml` 显式选择 GICv2 和 SMP4。
+这个 smoke 等待四个 CPU 完成启动并进入 shell 后输出唯一成功标记，用来
+覆盖 test-suit 的 GICv3/SMP4 配置没有覆盖到的普通 GICv2 启动路径；它不是
+`test-suit/starryos/` 下的可发现 case。
 
 ## qemu/system 聚合
 

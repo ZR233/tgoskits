@@ -1,7 +1,7 @@
 args = [
   "-machine", "virt,gic-version=2",
   "-m", "512M",
-  "-smp", "1",
+  "-smp", "4",
   "-nographic",
   "-cpu", "cortex-a53",
   "-device", "nvme,drive=disk0,serial=tgoskits,max_ioqpairs=64,msix_qsize=65",
