@@ -520,7 +520,12 @@ jobs:
           - name: Test starry aarch64 qemu
             use_container: true
             runs_on: '["ubuntu-latest"]'
-            command: target/debug/tg-xtask starry test qemu --arch aarch64
+            command: |
+              echo "==> starry aarch64 GICv2 boot"
+              target/debug/tg-xtask starry qemu --arch aarch64 \
+                --qemu-config os/StarryOS/configs/qemu/qemu-aarch64-gicv2-boot.toml
+              echo "==> starry aarch64 test suites"
+              target/debug/tg-xtask starry test qemu --arch aarch64
             cache_key: test-starry-aarch64
             container_image: base
             apk_region: us
@@ -565,11 +570,16 @@ jobs:
             container_image: base
             limit_to_owner: ""
             main_pr_only: false
-          - name: Test arceos aarch64 qemu
+          - name: Test arceos aarch64 qemu (app + suites)
             use_container: false
             runs_on: '["self-hosted","linux","qcs"]'
             self_hosted_owner: rcore-os
-            command: cargo xtask arceos test qemu --arch aarch64
+            command: |
+              echo "==> arceos aarch64 default app boot"
+              cargo xtask arceos qemu --arch aarch64 \
+                --qemu-config os/arceos/configs/qemu/qemu-aarch64-gicv2-boot.toml
+              echo "==> arceos aarch64 test suites"
+              cargo xtask arceos test qemu --arch aarch64
             cache_key: ""
             container_image: base
             limit_to_owner: ""
