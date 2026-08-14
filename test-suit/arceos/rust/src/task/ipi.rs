@@ -56,15 +56,6 @@ fn counting_callback() {
     EXECUTED_CALLBACKS.fetch_add(1, Ordering::Relaxed);
 }
 
-fn noop_callback() {
-    let target_cpu = TARGET_CPU.load(Ordering::Relaxed);
-    assert_eq!(
-        this_cpu_id(),
-        target_cpu,
-        "IPI callback ran on the wrong CPU"
-    );
-}
-
 unsafe fn counting_hard_call(argument: *mut ()) {
     let expected_cpu = unsafe { *(argument as *const usize) };
     assert_eq!(
@@ -125,15 +116,6 @@ fn verify_self_ipi_delivery(cpu_id: usize) {
     );
 }
 
-fn send_recovery_ipi(target_cpu: usize, sender_cpu: usize) {
-    thread::spawn(move || {
-        pin_current_to_cpu(sender_cpu);
-        ax_ipi::legacy::run_on_cpu(target_cpu, noop_callback).expect("failed to send recovery IPI");
-    })
-    .join()
-    .unwrap();
-}
-
 pub fn run() -> crate::TestResult {
     let cpu_num = thread::available_parallelism().unwrap().get();
     if cpu_num < 2 {
@@ -189,19 +171,12 @@ pub fn run() -> crate::TestResult {
         let expected = sender_cpus.len() * CALLBACKS_PER_SENDER;
         assert_eq!(SENT_CALLBACKS.load(Ordering::Relaxed), expected);
 
-        if !wait_for_callbacks_or_stall(expected) {
-            send_recovery_ipi(target_cpu, sender_cpus[0]);
-            let _ = wait_for_callbacks_or_stall(expected);
-            let executed_after_recovery = EXECUTED_CALLBACKS.load(Ordering::Relaxed);
-            if executed_after_recovery == expected {
-                panic!("IPI callbacks only drained after an extra recovery IPI in round {round}");
-            } else {
-                panic!(
-                    "IPI callbacks stalled at {executed_after_recovery}/{expected} in round \
-                     {round}"
-                );
-            }
-        }
+        assert!(
+            wait_for_callbacks_or_stall(expected),
+            "IPI callbacks stalled at {}/{} in round {round}",
+            EXECUTED_CALLBACKS.load(Ordering::Relaxed),
+            expected
+        );
     }
 
     pin_current_to_cpu(sender_cpus[0]);
