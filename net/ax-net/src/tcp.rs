@@ -731,10 +731,10 @@ impl SocketOps for TcpSocket {
             // rx_closed is visible before waking RDHUP/EOF waiters.
             unsafe { self.poll_rx_closed.wake(IoEvents::RDHUP | IoEvents::IN) };
         }
-
-        // stream
-        if let Ok(guard) = self.state.lock(State::Connected) {
-            if how.has_read() && how.has_write() {
+        // Only a full shutdown changes the public socket state. Half shutdowns
+        // must keep it pollable as connected while smoltcp closes one side.
+        if how.has_read() && how.has_write() {
+            if let Ok(guard) = self.state.lock(State::Connected) {
                 guard.transit(State::Closed, || {
                     self.with_smol_socket(|socket| {
                         debug!("TCP socket {}: shutting down", self.handle);
@@ -743,16 +743,16 @@ impl SocketOps for TcpSocket {
                     self.clear_tracked_egress_ip_tos();
                     self.unregister_bound_endpoint();
                     *self.bound_endpoint.lock() = empty_endpoint();
-                    request_poll();
                     Ok(())
                 })?;
-            } else if how.has_write() {
-                self.with_smol_socket(|socket| {
-                    debug!("TCP socket {}: shutting down write side", self.handle);
-                    socket.close();
-                });
                 request_poll();
             }
+        } else if how.has_write() && self.state.get() == State::Connected {
+            self.with_smol_socket(|socket| {
+                debug!("TCP socket {}: shutting down write side", self.handle);
+                socket.close();
+            });
+            request_poll();
         }
 
         // listener
@@ -1192,6 +1192,21 @@ mod tests {
             Err(NetError::WouldBlock),
         );
         assert_eq!(total, 4);
+    }
+
+    #[test]
+    fn half_shutdown_keeps_connected_state() {
+        let _guard = network_test_guard();
+        init_split_route_network();
+
+        for how in [Shutdown::Write, Shutdown::Read] {
+            let socket = TcpSocket::new();
+            socket.state.set(State::Connected);
+
+            socket.shutdown(how).unwrap();
+
+            assert_eq!(socket.state.get(), State::Connected);
+        }
     }
 
     #[test]
