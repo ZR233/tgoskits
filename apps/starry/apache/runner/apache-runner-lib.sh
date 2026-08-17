@@ -27,6 +27,13 @@ apache_runner_init_timeout_cmd() {
 apache_runner_run_with_timeout() {
     sec=$1
     shift
+    if [ "${1:-}" = curl ]; then
+        # Keep the deadline in the transfer process. An external timeout adds
+        # another wait/signal lifecycle after curl has completed the response.
+        shift
+        curl --max-time "$sec" "$@"
+        return
+    fi
     # shellcheck disable=SC2086
     $APACHE_RUNNER_TIMEOUT_CMD "$sec" "$@"
 }
