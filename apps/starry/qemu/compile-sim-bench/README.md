@@ -3,6 +3,7 @@
 `compile-sim-bench` 用固定进程依赖图近似 `cargo build -jN` 的调度形态，并让同一个静态 ELF 在
 Starry 当前分支、Starry `dev` 与 Linux v7.1 PREEMPT_RT 中运行。它不下载源码或工具链，也不把
 真实编译器版本、网络状态和增量缓存混入调度结果；LTP `hackbench` 仍作为高频 IPC 下界单独运行。
+2026-09-01 的三系统正式对比见 `RESULTS-2026-09-01.md`。
 
 ## 1. 负载模型
 
