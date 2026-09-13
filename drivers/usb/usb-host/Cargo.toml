@@ -7,10 +7,11 @@ keywords = ["os", "usb", "xhci", "driver"]
 license.workspace = true
 name = "crab-usb"
 repository.workspace = true
-version = "0.10.5"
+version = "0.12.1"
 
 [features]
 default = []
+host-test = ["ax-sync/host-test"]
 libusb = ["umod"]
 umod = ["libusb1-sys"]
 
@@ -26,17 +27,16 @@ dma-api = {workspace = true}
 anyhow = { workspace = true }
 enum_dispatch = "0.3"
 futures = {workspace = true, features = ["alloc"]}
-id-arena = {version = "2", default-features = false}
 log = "0.4"
 mbarrier = "0.1"
 nb = "1.1"
 num_enum = {version = "0.7", default-features = false}
 thiserror = {workspace = true}
 tock-registers.workspace = true
-trait-ffi = "0.2.4"
+trait-ffi.workspace = true
 usb-if = {workspace = true}
 xhci = "0.9"
 libusb1-sys = {version = "0.7", optional = true}
 
 [dev-dependencies]
-ax-sync = { workspace = true, features = ["host-test"] }
+ax-sync = { path = "../../../os/arceos/modules/axsync", features = ["host-test"] }

@@ -494,7 +494,7 @@ function CapabilitySection() {
     { icon: 'orbit', title: '统一工程编排', desc: 'cargo xtask 提供 ArceOS、StarryOS、Axvisor、镜像、板卡与测试命令的统一入口。', to: '/docs/build/overview' },
     { icon: 'grid', title: '内存基础能力', desc: 'allocator、地址类型、memory set 与多架构页表实现集中在 memory/，供系统按需组合。', to: '/docs/architecture/overview' },
     { icon: 'layers', title: '调度与同步原语', desc: 'axsched、cpumask、ax-sync 与 ax-lazyinit 提供可复用的内核运行时基础。', to: '/docs/architecture/overview' },
-    { icon: 'server', title: '文件与进程组件', desc: 'axfs-ng-vfs、rsext4、starry-process、starry-signal 与 starry-vm 承载明确的领域语义。', to: '/docs/architecture/overview' },
+    { icon: 'server', title: '文件与进程组件', desc: 'axfs-ng-vfs、rsext4、StarryOS kernel task、starry-signal 与 starry-vm 承载明确的领域语义。', to: '/docs/architecture/overview' },
     { icon: 'chip', title: '虚拟化基础对象', desc: 'virtualization/ 提供 VM、vCPU、地址空间、虚拟设备及各架构中断控制器实现。', to: '/docs/architecture/axvisor' },
     { icon: 'plug', title: '设备能力接口', desc: 'dma-api、mmio-api、irq-framework 与 RDIF 接口 crate 将资源访问从具体 OS glue 中分离。', to: '/docs/architecture/overview' },
   ];
@@ -660,7 +660,7 @@ function ComponentWorkspaceSection() {
 /* ── Systems Section ─────────────────────────────────────── */
 function SystemsSection() {
   const systems = [
-    { accent: 'accent-arceos', name: 'ArceOS', subtitle: '模块化内核', tag: '组合系统', desc: '通过配置组合 axalloc、axtask、axfs、axnet、axhal 等模块，生成面向具体应用场景的系统镜像。', items: ['四架构 Rust、C 与 axtest 用例', '示例覆盖基础运行与设备场景', '基于 feature 和配置裁剪模块能力'] },
+    { accent: 'accent-arceos', name: 'ArceOS', subtitle: '模块化内核', tag: '组合系统', desc: '通过配置组合 axalloc、ax-runtime、ax-task、axfs、axnet、axhal 等组件，生成面向具体应用场景的系统镜像。', items: ['四架构 Rust、C 与 axtest 用例', '示例覆盖基础运行与设备场景', '基于 feature 和配置裁剪模块能力'] },
     { accent: 'accent-starry', name: 'StarryOS', subtitle: 'Linux 兼容 OS', tag: '用户态兼容', desc: '实现 Linux 系统调用、ELF 加载、进程与信号语义，并通过 rootfs 和用户态程序验证兼容性。', items: ['四架构系统调用分组测试', '四架构 TTY 输入测试', '板测覆盖网络、USB、PCIe 与 NPU'] },
     { accent: 'accent-axvisor', name: 'Axvisor', subtitle: 'Type-I Hypervisor', tag: '虚拟化运行时', desc: '管理 VM、vCPU、虚拟地址空间与虚拟设备，并通过静态或动态平台配置启动不同 Guest。', items: ['四架构 Guest 启动冒烟测试', 'x86_64 支持 VMX 与 SVM', 'LoongArch64 支持动态 UEFI 启动'] },
   ];

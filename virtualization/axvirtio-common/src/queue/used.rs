@@ -2,6 +2,7 @@ use alloc::sync::Arc;
 
 use axaddrspace::GuestMemoryAccessor;
 use axvm_types::GuestPhysAddr;
+use mbarrier::mb;
 
 use crate::{
     constants::*,
@@ -151,16 +152,29 @@ impl<T: GuestMemoryAccessor + Clone> UsedRing<T> {
 
     /// Get the address of the available event field (if event_idx is enabled)
     pub fn avail_event_addr(&self) -> GuestPhysAddr {
-        let offset = core::mem::size_of::<VirtQueueUsed>()
-            + (self.size as usize * core::mem::size_of::<VirtqUsedElem>());
-        self.base_addr + offset
+        // Header + ring array fill the region up to 2 bytes before its end;
+        // the `avail_event` footer is always part of the region (see
+        // `layout_size`).
+        self.base_addr + Self::layout_size(self.size) - 2
     }
 
-    /// Calculate the total size of the used ring
-    pub fn total_size(&self) -> usize {
+    /// Size in bytes of the complete used ring for a queue of `size` entries,
+    /// including the trailing 2-byte `avail_event` field.
+    ///
+    /// The footer is always counted: a driver that negotiated
+    /// `VIRTIO_F_RING_EVENT_IDX` reads `avail_event` from there, and layout
+    /// validation must not depend on negotiation state.
+    pub(crate) const fn layout_size(size: u16) -> usize {
         core::mem::size_of::<VirtQueueUsed>()
-            + (self.size as usize * core::mem::size_of::<VirtqUsedElem>())
+            + (size as usize) * core::mem::size_of::<VirtqUsedElem>()
             + 2
+    }
+
+    /// The size in bytes this ring occupies in guest memory, always including
+    /// the trailing 2-byte event-index footer (see
+    /// [`layout_size`](Self::layout_size)).
+    pub fn total_size(&self) -> usize {
+        Self::layout_size(self.size)
     }
 
     /// Check if the used ring is valid
@@ -181,6 +195,16 @@ impl<T: GuestMemoryAccessor + Clone> UsedRing<T> {
         id: u32,
         len: u32,
         memory: &mut dyn GuestMemory,
+    ) -> VirtioResult<()> {
+        self.add_used_with_memory_and_barrier(id, len, memory, mb)
+    }
+
+    fn add_used_with_memory_and_barrier(
+        &mut self,
+        id: u32,
+        len: u32,
+        memory: &mut dyn GuestMemory,
+        barrier: impl FnOnce(),
     ) -> VirtioResult<()> {
         if !self.is_valid() {
             return Err(VirtioError::QueueNotReady);
@@ -203,6 +227,9 @@ impl<T: GuestMemoryAccessor + Clone> UsedRing<T> {
 
         // Update the used index
         self.used_idx = self.used_idx.wrapping_add(1);
+
+        // Publish the used element before publishing used_idx to the driver.
+        barrier();
 
         // Update the used ring header index
         self.write_used_idx_with_memory(memory)?;
@@ -282,5 +309,93 @@ impl<T: GuestMemoryAccessor + Clone> UsedRing<T> {
         self.write_used_header(&header)?;
 
         Ok(())
+    }
+
+    /// Sets notification suppression with a scoped memory capability.
+    pub(crate) fn set_notification_with_memory(
+        &self,
+        suppress: bool,
+        memory: &mut dyn GuestMemory,
+    ) -> VirtioResult<()> {
+        if !self.is_valid() {
+            return Err(VirtioError::QueueNotReady);
+        }
+        let flags = if suppress { VIRTQ_USED_F_NO_NOTIFY } else { 0 };
+        memory.write(self.base_addr, &flags.to_le_bytes())
+    }
+
+    /// Writes the available event field with a scoped memory capability.
+    pub(crate) fn write_avail_event_with_memory(
+        &self,
+        event: u16,
+        memory: &mut dyn GuestMemory,
+    ) -> VirtioResult<()> {
+        if !self.is_valid() {
+            return Err(VirtioError::QueueNotReady);
+        }
+        memory.write(self.avail_event_addr(), &event.to_le_bytes())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use alloc::{rc::Rc, vec::Vec};
+    use core::cell::RefCell;
+
+    use axvm_types::GuestPhysAddr;
+
+    use super::*;
+    use crate::{GuestMemory, NoGuestMemoryAccessor};
+
+    struct RecordingMemory {
+        events: Rc<RefCell<Vec<&'static str>>>,
+    }
+
+    impl GuestMemory for RecordingMemory {
+        fn read(&mut self, _: GuestPhysAddr, _: &mut [u8]) -> VirtioResult<()> {
+            Err(VirtioError::InvalidAddress)
+        }
+
+        fn write(&mut self, address: GuestPhysAddr, _: &[u8]) -> VirtioResult<()> {
+            self.events
+                .borrow_mut()
+                .push(if address.as_usize() == 0x1002 {
+                    "used_idx"
+                } else {
+                    "used_elem"
+                });
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn publishes_used_element_before_used_index() {
+        let events = Rc::new(RefCell::new(Vec::new()));
+        let mut memory = RecordingMemory {
+            events: events.clone(),
+        };
+        let mut ring = UsedRing::new(
+            GuestPhysAddr::from(0x1000),
+            1,
+            alloc::sync::Arc::new(NoGuestMemoryAccessor),
+        );
+
+        ring.add_used_with_memory_and_barrier(7, 11, &mut memory, || {
+            events.borrow_mut().push("barrier");
+        })
+        .unwrap();
+
+        assert_eq!(&*events.borrow(), &["used_elem", "barrier", "used_idx"]);
+    }
+
+    #[test]
+    fn layout_size_counts_header_elements_and_footer() {
+        // header (4) + 4 elements * 8 bytes + avail_event footer (2) = 38.
+        assert_eq!(UsedRing::<NoGuestMemoryAccessor>::layout_size(4), 38);
+        // Boundary: the largest queue size still counts the footer.
+        assert_eq!(
+            UsedRing::<NoGuestMemoryAccessor>::layout_size(256),
+            4 + 256 * 8 + 2
+        );
     }
 }
