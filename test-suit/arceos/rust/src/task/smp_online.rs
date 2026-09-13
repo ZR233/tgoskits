@@ -11,7 +11,7 @@ use std::{
 use ax_std::os::arceos::{
     api::task::{AxCpuMask, ax_set_current_affinity},
     modules::{
-        ax_hal::{irq::CpuId, percpu::this_cpu_id},
+        ax_hal::{irq::CpuId, percpu::this_cpu_id, topology::cpu_capacity},
         ax_ipi,
     },
 };
@@ -77,6 +77,10 @@ pub fn run() -> crate::TestResult {
                 cpu_id,
                 "affinity worker did not run on CPU {cpu_id}"
             );
+            // QEMU suite firmware has no asymmetric capacity description.
+            // Exercise the published topology from each real CPU, through HAL.
+            assert_eq!(cpu_capacity(cpu_id), Some(1024));
+            assert_eq!(cpu_capacity(usize::MAX), None);
             affinity_done.fetch_add(1, Ordering::Release);
         }));
     }
