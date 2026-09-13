@@ -134,7 +134,7 @@ Starry perf 使用 `ax_cpu::pmu::Pmu` 的有作用域会话；Linux event/cache 
 
 ## CPU 启动容量
 
-容量发现与归一化由 someboot 的 `fdt::CpuCapacities` 完成，按启动层选中集合的硬件 ID 匹配节点，不以设备树顺序重建逻辑编号。完整容量随 `PerCpuMeta` 在最终高地址初始化并通过已有 Release/Acquire 发布；运行期经 `CpuTopologyIf::cpu_capacity()` 读取，不解析固件、不新建惰性容量表。参照 [CPU 启动容量设计](../../../docs/design/cpu-capacity-topology.md) 中固定 Linux 版本的整组缺失回退、等频假设和零容量语义。没有可信容量来源时全部为 1024，禁止按 A55/A76 型号猜权重；整数归一化可能为零，消费者须处理后才能除法。
+容量发现与归一化由 someboot 的 `fdt::CpuCapacities` 完成，按启动层选中集合的硬件 ID 匹配节点，不以设备树顺序重建逻辑编号。容量与元数据填充必须复用同一个 `CpuIdIter` 的来源选择；仅 FDT 拓扑允许读取 FDT 容量，ACPI 拓扑在没有自身容量实现时统一使用 1024，不能因两个固件表中的数字 ID 相同而混用。完整容量随 `PerCpuMeta` 在最终高地址初始化并通过已有 Release/Acquire 发布；运行期经 `CpuTopologyIf::cpu_capacity()` 读取，不解析固件、不新建惰性容量表。参照 [CPU 启动容量设计](../../../docs/design/cpu-capacity-topology.md) 中固定 Linux 版本的整组缺失回退、等频假设和零容量语义。没有可信容量来源时全部为 1024，禁止按 A55/A76 型号猜权重；整数归一化可能为零，消费者须处理后才能除法。
 
 ## 对称多处理启动规则
 

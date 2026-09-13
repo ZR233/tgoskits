@@ -644,9 +644,11 @@ fn initialize_runtime_metadata() {
     let entry_phys =
         crate::mem::virt_to_phys(crate::entry::secondary_entry as *const () as *const u8);
     let entry_virt = crate::mem::__kimage_va(entry_phys) as usize;
-    let capacities = crate::fdt::fdt_base()
-        .and_then(|fdt| crate::fdt::CpuCapacities::from_fdt(fdt, __cpu_id_list()));
-    for (cpu_index, hardware_id) in __cpu_id_list().enumerate() {
+    let cpu_ids = cpu_iter::cpu_id_list();
+    let capacities = cpu_ids
+        .capacity_fdt(crate::fdt::fdt_base)
+        .and_then(|fdt| crate::fdt::CpuCapacities::from_fdt(fdt, cpu_ids.clone()));
+    for (cpu_index, hardware_id) in cpu_ids.enumerate() {
         let meta_start = cpu_meta_addr(cpu_index)
             .expect("reserved per-CPU metadata slot must remain addressable");
         let stack_top = layout::cpu_stack_top(cpu_index)
