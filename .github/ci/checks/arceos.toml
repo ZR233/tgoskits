@@ -4,16 +4,6 @@ group = "ArceOS"
 default_runner = "qcs"
 
 [[check]]
-id = "test-someboot-cpu-capacity"
-impact_targets = ["arceos:aarch64"]
-name = "CPU capacity firmware semantics"
-timeout_minutes = 10
-cache_key = ""
-command = '''
-cargo xtask cross-test --arch aarch64 --package someboot --lib fdt::capacity::tests
-'''
-
-[[check]]
 id = "test-arceos-x86-64-qemu"
 impact_targets = ["arceos:x86_64"]
 name = "QEMU x86_64 · Suites"

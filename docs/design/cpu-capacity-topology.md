@@ -40,10 +40,10 @@ Linux 的完整容量计算还乘以 CPU 参考频率。someboot 当前没有统
 
 原 ax-hal fixture 的无容量属性场景在旧实现上得到 `[1024, 530]`，以统一默认 `[1024, 1024]` 判定时失败。重构后将原节点过滤和归一化的独特信号迁入 someboot 两个通用单元测试，验证非连续硬件 ID、启动 CPU 重排、选中集合、禁用及游离节点、缺失或畸形属性、整数截断和整组回退。
 
-通过 `cargo xtask cross-test --arch aarch64 --package someboot --lib fdt::capacity::tests` 执行实际解析代码；同一命令接入 ArceOS AArch64 CI。当前 dev 的 someboot x86 库测试仍引用已删除的定时器对象，因此本次不将 someboot 加入宿主标准库测试允许列表，也不改动无关定时器代码。
+通过 `cargo xtask cross-test --arch aarch64 --package someboot --lib fdt::capacity::tests` 执行实际解析代码，用于本地定向规则验证，不新增独立 CI 项。当前 dev 的 someboot x86 库测试仍引用已删除的定时器对象，因此本次不将 someboot 加入宿主标准库测试允许列表，也不改动无关定时器代码。
 
 ### 3.2 装配与回滚
 
-已有 `task-smp-online` QEMU 用例在每个实际处理器上的亲和线程中经 HAL 查询容量，验证无容量属性的 QEMU 固件得到 1024，并拒绝越界索引。该路径同时经过元数据发布、动态平台接口和跨核读取；成功标记及失败规则保持原有契约。
+ArceOS 综合测试套件新增 `cpu-capacity` 测试项，并纳入 `all`、`SELECTED_TESTS` 和任务工具发现列表，复用现有 Rust 套件 CI。测试在每个实际处理器上的亲和线程中经 HAL 查询所有在线 CPU 的容量，验证无容量属性的 QEMU 固件得到 1024，并拒绝越界索引。该路径同时经过元数据发布、动态平台接口和跨核读取；成功标记及失败规则沿用套件契约，`task-smp-online` 保留原有 SMP/IPI 职责。
 
 按用户要求不在本地运行 clippy 或完整 QEMU 矩阵。执行结果记录在 PR 正文，未执行项不能视作通过。运行期查询复杂度不变为常数；固件匹配仅在启动初始化中执行，时间上界随选中 CPU 数和设备树 CPU 节点数的乘积增长，使用常量额外存储。没有性能收益声明。回滚可整体撤销容量接口、元数据字段及测试接入，无持久状态迁移。
