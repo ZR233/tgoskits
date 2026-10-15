@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -1449,6 +1450,8 @@ command = "true"
     def test_cli_reports_actual_runner_allocation_and_secret_exclusions(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             summary_file = Path(temp_dir) / "summary.md"
+            outputs_file = Path(temp_dir) / "outputs"
+            inherited_output = Path(temp_dir) / "inherited-output"
             result = subprocess.run(
                 [
                     sys.executable, str(MODULE_PATH), "--mode", "main",
@@ -1458,13 +1461,21 @@ command = "true"
                     "--head-repository", "contributor/tgoskits",
                     "--base-ref", "dev", "--since-ref", "invalid-fixture-ref",
                     "--summary-file", str(summary_file),
+                    "--output-file", str(outputs_file),
                 ],
+                env={**os.environ, "GITHUB_OUTPUT": str(inherited_output)},
                 capture_output=True,
                 text=True,
                 check=False,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
-            rows = main_test_rows(json.loads(result.stdout))
+            outputs = dict(
+                (name, json.loads(value))
+                for line in outputs_file.read_text(encoding="utf-8").splitlines()
+                for name, _, value in (line.partition("="),)
+            )
+            self.assertFalse(inherited_output.exists())
+            rows = main_test_rows(outputs)
             self_hosted_rows = [row for row in rows if "self-hosted" in row["runs_on"]]
             self.assertTrue(self_hosted_rows)
             summary = summary_file.read_text(encoding="utf-8")
