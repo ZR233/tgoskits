@@ -67,7 +67,7 @@ CODE_KW = RGBColor(0x7D, 0xD3, 0xFC)
 CODE_STR = RGBColor(0x86, 0xEF, 0xAC)
 CODE_TYPE = RGBColor(0xFD, 0xD4, 0x63)
 
-TOTAL_SLIDES = 18
+TOTAL_SLIDES = 17
 
 
 @dataclass
@@ -101,8 +101,6 @@ def extract_v4_media() -> dict[str, bytes]:
     targets = {
         "web_ui": "ppt/media/image6.png",
         "web_term": "ppt/media/image7.png",
-        "ostool_boards": "ppt/media/image10.png",
-        "ostool_overview": "ppt/media/image11.png",
         "wechat_qr": "ppt/media/image12.jpeg",
     }
     blobs: dict[str, bytes] = {}
@@ -554,17 +552,17 @@ Type-1 是指虚拟机管理器直接跑在硬件上，不像 KVM 运行虚拟�
         (
             "01 · 按需组装专用内核", BRAND_BLUE, ICE_FILL, BORDER_BLU,
             "Type-1 直接跑在硬件上，需要调度、内存管理和驱动等内核能力。",
-            "从 TGOSKits 选用底层组件，再加入虚拟化组件，组装成专门做虚拟化的宿主内核。"
+            "从 TGOSKits 选用底层组件并叠加虚拟化包，自底向上求同存异适配四种架构。"
         ),
         (
-            "02 · 内核态支持 Rust 标准库", SAFE_GREEN, SAFE_BG, SAFE_BORDER,
-            "网页管理服务需要线程、网络等标准库能力。",
-            "宿主内核提供 Rust std，管理线程可直接使用 Tokio、Axum 等通常用于应用层的库。"
+            "02 · 通过 std 构建内核态安全隔离", SAFE_GREEN, SAFE_BG, SAFE_BORDER,
+            "传统内核态缺乏隔离边界，业务与底层汇编、调度混跑易破坏宿主。",
+            "以内核态 Rust std 收敛底层调度与 unsafe 汇编，使上层具备应用级安全保障。"
         ),
         (
-            "03 · 宿主内核也是实时内核", AMBER_ORG, AMBER_BG, AMBER_BORDER,
-            "电机控制要按时运行，也要及时处理设备中断。",
-            "实时应用可由宿主直接调度。控制设备由宿主管理时，可省掉向客户机转发中断的开销。"
+            "03 · 省掉实时客户机并复用 std 生态", AMBER_ORG, AMBER_BG, AMBER_BORDER,
+            "另开实时客户机多占内存与转发开销，裸机手写管控业务研发成本高。",
+            "实时任务在宿主内核态安全直跑省掉客户机开销，并可直接引入 std crate 简化开发。"
         ),
         (
             "04 · 声明式设备图简化配置", PURPLE, PURP_BG, PURP_BORDER,
@@ -578,26 +576,26 @@ Type-1 是指虚拟机管理器直接跑在硬件上，不像 KVM 运行虚拟�
         qx = 1.12 + col * 12.42
         qy = 2.86 + row * 4.44
         qw, qh = 12.00, 4.14
-        add_card(s3, qx, qy, qw, qh, title=qtitle, accent=accent, fill=WHITE, border=bd, title_size=26, header_band=True)
+        add_card(s3, qx, qy, qw, qh, title=qtitle, accent=accent, fill=WHITE, border=bd, title_size=25.5, header_band=True)
         add_rect(s3, qx + 0.28, qy + 0.88, qw - 0.56, 1.02, fill=LIGHT_GRAY, border=GRAY_BORDER, border_pt=1.0, rounded=True, radius=0.06)
-        add_textbox(s3, qx + 0.42, qy + 0.92, qw - 0.84, 0.94, pain, size=21, color=MUTED_TEXT, bold=False, valign=MSO_ANCHOR.MIDDLE)
+        add_textbox(s3, qx + 0.42, qy + 0.92, qw - 0.84, 0.94, pain, size=20.5, color=MUTED_TEXT, bold=False, valign=MSO_ANCHOR.MIDDLE)
         add_rect(s3, qx + 0.28, qy + 2.04, qw - 0.56, 1.84, fill=bg, border=bd, border_pt=1.2, rounded=True, radius=0.06)
-        add_textbox(s3, qx + 0.42, qy + 2.10, qw - 0.84, 1.72, sol, size=22.5, color=DARK_NAVY, bold=True, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.24)
+        add_textbox(s3, qx + 0.42, qy + 2.10, qw - 0.84, 1.72, sol, size=22, color=DARK_NAVY, bold=True, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.24)
 
     add_notes(
         s3,
         "AxVisor 的四项设计特点",
         "01 背景与取舍",
-        1.5,
+        1.6,
         """围绕这个思路，AxVisor 在架构上做了四项关键设计。
 
-第一，按需组装专用内核。AxVisor 是 Type-1 虚拟机管理器，直接跑在硬件上，自己就得有调度、内存管理和设备驱动。这些能力来自 TGOSKits，它是一个用 Rust 开发操作系统和虚拟化软件的开源项目。我们从里面选出需要的内核组件，再加上虚拟化组件，组装成专门做虚拟化的宿主内核。
+第一，按需组装专用内核。AxVisor 直接跑在硬件上，自己就得具备调度、内存管理和设备驱动。我们从开源组件工作区 TGOSKits 里选出所需的内核组件，再叠加上虚拟化组件，组装成专用的多架构宿主内核。
 
-第二，在内核态支持 Rust 标准库。像 Tokio 和 Axum 这类平时用来写应用服务的库，也可以直接在宿主内核的管理线程里运行。板子上的网页管理台就是这么实现的。
+第二，通过内核态标准库构建安全隔离边界。传统内核态没有安全隔离，底层汇编、关中断调度与上层代码混在一起；我们用内核态 Rust 标准库把底层的调度细节和 unsafe 汇编全部收敛封装起来，让标准库之上拥有应用层的安全开发保障。
 
-第三，宿主内核也是实时内核。比如电机控制，可以直接交给宿主调度，省掉客户机这一层。如果控制设备由宿主直接管理，中断也由宿主直接处理，少一次虚拟化转发。
+第三，省掉独立实时客户机并复用标准库生态。有了标准库这一层安全隔离，实时控制任务可以直接在宿主内核态安全运行，省掉单独开一台实时客户机的内存和转发开销；同时还能直接引入 Tokio、Axum 等成熟的标准库组件，大幅简化宿主业务开发。
 
-第四，用声明式设备图简化配置。比如给客户机加个虚拟串口，配置里写要用什么设备，AxVisor 就会分配地址和中断号，再用同一份设备图生成供客户机识别的硬件描述清单。
+第四，用声明式设备图简化客户机配置。配置文件只声明需要哪些虚拟设备，由设备图统一分配地址和中断号，同步生成宿主路由表和客户机固件描述。
 
 这四项设计里，最基础的是第一条：一个不依赖 Linux 托底的 Type-1 宿主内核，到底怎么低成本地搭建出来？"""
     )
@@ -808,49 +806,61 @@ Type-1 是指虚拟机管理器直接跑在硬件上，不像 KVM 运行虚拟�
     s7 = new_styled_slide(prs, stamps["white"])
     add_content_chrome(
         s7, False, "02 专用内核", BRAND_BLUE,
-        "多架构复用：四种架构共用一套 vCPU 流程",
-        "把通用流程写在 AxVM，硬件操作由构建时选定的架构后端提供",
-        7, "共用流程",
-        "修正 vCPU 的通用执行顺序时，只需要改一处。"
+        "多架构复用：虚拟处理器线程的通用阶段与共性抽象",
+        "每个虚拟处理器对应宿主机上一个独立内核线程，通用层固化四阶段执行骨架，底层硬件差异编译期静态绑定",
+        7, "抽象边界",
+        "执行顺序、并发安全边界与休眠唤醒只维护一份通用状态机，四种芯片后端只实现最小硬件动作。"
     )
-    add_card(s7, 1.12, 2.84, 11.15, 8.65, title="从 QEMU 的多架构场景看起", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=27, header_band=True)
+    add_card(s7, 1.12, 2.84, 11.15, 8.65, title="本质模型与跨架构共性抽象", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=26, header_band=True)
+    add_rect(s7, 1.46, 3.80, 10.46, 1.88, fill=LIGHT_GRAY, border=GRAY_BORDER, border_pt=1.2)
+    add_textbox(s7, 1.71, 3.92, 9.96, 0.44, "运行本质：宿主机上的一个独立线程", size=23, color=DARK_NAVY, bold=True)
     add_textbox(
-        s7, 1.46, 3.82, 10.46, 1.42,
-        "QEMU 的 ARM 和 x86 整机目标要分别处理 CPU 与中断控制器。AxVisor 在硬件上运行客户机，也面对这类差异。",
-        size=24, color=BODY_TEXT, line_spacing=1.2
+        s7, 1.71, 4.42, 9.96, 1.14,
+        "每个虚拟处理器由一个宿主内核线程独占承载：上核后切入客户机原生执行指令，遇拦截事件再退回线程处理。",
+        size=21, color=BODY_TEXT, line_spacing=1.2
     )
-    add_rect(s7, 1.46, 5.40, 10.46, 2.13, fill=ICE_FILL, border=BORDER_BLU, border_pt=1.2)
-    add_textbox(s7, 1.71, 5.57, 9.96, 0.46, "各架构都要完成的工作", size=24, color=BRAND_BLUE, bold=True)
-    add_textbox(s7, 1.71, 6.16, 9.96, 0.96, "调度 vCPU、进入客户机、退出后恢复宿主，再处理设备访问。", size=23, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE)
-    add_rect(s7, 1.46, 7.78, 10.46, 2.76, fill=AMBER_BG, border=AMBER_BORDER, border_pt=1.2)
-    add_textbox(s7, 1.71, 7.98, 9.96, 0.46, "AxVM 怎么复用", size=24, color=AMBER_ORG, bold=True)
-    add_textbox(s7, 1.71, 8.59, 9.96, 1.55, "通用执行器规定先后顺序。ArchOps 定义准备、写回和退出等硬件操作，编译时接到对应的后端。", size=23, color=DARK_NAVY, line_spacing=1.2)
+    add_rect(s7, 1.46, 5.90, 10.46, 2.36, fill=ICE_FILL, border=BORDER_BLU, border_pt=1.2)
+    add_textbox(s7, 1.71, 6.04, 9.96, 0.44, "四种芯片不变的共性部分", size=23, color=BRAND_BLUE, bold=True)
+    add_textbox(
+        s7, 1.71, 6.54, 9.96, 1.58,
+        "进出客户机的阶段顺序、固定物理核防迁移、本地中断开关时机、防漏唤醒检查，以及退回后的重入与休眠流程完全相同。",
+        size=21, color=DARK_NAVY, line_spacing=1.2
+    )
+    add_rect(s7, 1.46, 8.48, 10.46, 2.68, fill=AMBER_BG, border=AMBER_BORDER, border_pt=1.2)
+    add_textbox(s7, 1.71, 8.62, 9.96, 0.44, "共性抽象方式：骨架上提 + 编译期静态绑定", size=23, color=AMBER_ORG, bold=True)
+    add_textbox(
+        s7, 1.71, 9.12, 9.96, 1.90,
+        "通用层固化唯一一份线程循环与安全守卫；将装卸状态、切入运行、读取退出原因抽成最小硬件接口，编译时静态接入目标芯片。",
+        size=21, color=DARK_NAVY, line_spacing=1.2
+    )
 
-    add_card(s7, 12.60, 2.84, 12.95, 8.65, title="一个 vCPU 跑一轮", accent=AMBER_ORG, fill=WHITE, border=AMBER_BORDER, title_size=27, header_band=True)
+    add_card(s7, 12.60, 2.84, 12.95, 8.65, title="虚拟处理器线程单轮执行的四个通用阶段", accent=AMBER_ORG, fill=WHITE, border=AMBER_BORDER, title_size=26, header_band=True)
     vcpu_steps = [
-        ("调度 vCPU", "把 vCPU 当宿主任务，由 ArceOS 调度。", BRAND_BLUE, ICE_FILL),
-        ("进入客户机", "run_once 安排进入顺序，后端装载 CPU 状态。", AMBER_ORG, AMBER_BG),
-        ("发生 VM-Exit", "卸载客户机硬件状态，恢复宿主执行环境。", ALERT_RED, RED_BG),
-        ("处理退出", "ExitHandler 在任务上下文处理虚拟设备访问。", SAFE_GREEN, SAFE_BG),
+        ("1. 进入前准备与装入状态", "写回上一轮处理结果并注入待处理中断，随后固定在当前物理核、关闭本地中断，将客户机状态装入硬件。", BRAND_BLUE, ICE_FILL),
+        ("2. 物理核原生运行", "将当前物理核切换进客户机模式，直接在真实处理器硬件上全速执行客户机操作系统与应用指令。", AMBER_ORG, AMBER_BG),
+        ("3. 拦截切回与恢复宿主", "客户机访问虚拟外设、执行休眠指令或收到外部中断时切回宿主，记录退出原因、卸下客户机状态并恢复线程环境。", ALERT_RED, RED_BG),
+        ("4. 普通线程内分发处理", "回到可加锁、可睡眠的普通线程上下文，完成虚拟设备模拟后进入下一轮，或将线程挂起休眠等待中断唤醒。", SAFE_GREEN, SAFE_BG),
     ]
     for index, (label, description, color, fill) in enumerate(vcpu_steps):
         y = 3.77 + index * 1.87
         add_rect(s7, 12.92, y, 12.31, 1.47, fill=fill, border=color, border_pt=1.3)
-        add_textbox(s7, 13.13, y + 0.11, 11.89, 0.45, label, size=25, color=color, bold=True)
-        add_textbox(s7, 13.13, y + 0.62, 11.89, 0.66, description, size=22, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE)
+        add_textbox(s7, 13.13, y + 0.10, 11.89, 0.44, label, size=24, color=color, bold=True)
+        add_textbox(s7, 13.13, y + 0.56, 11.89, 0.80, description, size=20.5, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.18)
         if index < len(vcpu_steps) - 1:
             add_arrow(s7, 18.88, y + 1.49, 0.38, 0.29, "down", color)
 
     add_notes(
         s7,
-        "多架构复用：四种架构共用一套 vCPU 流程",
+        "多架构复用：虚拟处理器线程的通用阶段与共性抽象",
         "02 专用内核",
-        1.6,
-        """解决了驱动在不同内核之间的复用，到了虚拟化核心层 AxVM，还要面对另一重差异：跨处理器架构复用，同时支持 ARM64、x86-64、RISC-V 和 LoongArch。看左上角，就像 QEMU 整机模拟要分别处理各架构的 CPU 和中断控制器一样，AxVisor 直接跑在硬件上，各家的特权寄存器、页表和中断硬件也完全不同。要是四种架构各自写一套 vCPU 循环，改一次执行顺序就得同步改四处。
+        2.0,
+        """解决了驱动在不同内核之间的复用，再往上走到虚拟化核心层，还要面对四种不同处理器架构的硬件差异。要看清这一层怎么跨架构复用，先要明确虚拟处理器在宿主机里到底是什么：客户机的每一个虚拟处理器，对应的其实就是宿主机上的一个独立内核线程。它不像软件模拟器那样逐条解释指令，而是当宿主机调度器把这个线程放到某颗物理核上运行时，由线程把物理核直接切换进客户机模式，在硬件上原生执行客户机代码，遇到需要宿主介入的事件再退回线程循环。
 
-往上一层看，不管底层是什么芯片，让一个 vCPU 跑一轮，宿主在任务层要走的顺序其实是一样的。看右边四步：先由 ArceOS 把 vCPU 作为宿主任务调度到物理核上运行。接着通用执行器的 run_once 完成进入前准备、写回上次退出结果并注入待处理中断，再让后端装入客户机状态，进入物理 CPU 执行客户机指令。发生 VM-Exit 后，比如客户机写虚拟串口触发陷入，先卸载客户机硬件状态、恢复宿主环境。最后回到普通任务上下文，由 ExitHandler 调用虚拟设备完成处理。
+不管底层是哪一种芯片，这个宿主线程驱动虚拟处理器跑一轮，都会依次经历右边这四个通用阶段。第一阶段是进入前准备与装入状态：线程先把上一轮处理完的结果写回虚拟寄存器、填入待投递的虚拟中断，接着固定在当前物理核上禁止跨核迁移，关闭本地中断，做完进入前的最后一次唤醒检查后，把客户机的寄存器状态装入硬件。第二阶段是物理核原生运行：处理器切入客户机模式，直接在硬件上执行客户机指令。
 
-左下角的 ArchOps 就是这一层找出来的最小共同接口。进出顺序只在通用执行器里维护一份，具体读写哪些寄存器由各架构实现，编译时直接绑定到目标后端。那再往下一层看，中断投递和 CPU 切换能不能也照这个办法合成一个统一接口？"""
+第三阶段是拦截切回与恢复宿主环境：一旦客户机读写虚拟串口这类外设、执行休眠指令，或者来了外部物理中断，硬件就会自动切回宿主；这时必须先记录退出原因、卸下当前核上的客户机硬件状态，再重新打开本地中断并解除物理核绑定，恢复成正常的宿主线程环境。第四阶段是回到普通线程上下文做分发处理：此时线程已经允许加锁和睡眠，如果是访问虚拟设备，就调用设备模拟逻辑，带着结果进入下一轮循环；如果客户机当前无事可做，就把这个宿主线程挂到等待队列上休眠，让出物理核，等中断到来再唤醒。
+
+看清这四个阶段，共性部分的抽象方式就很自然了。看左下角，四种芯片真正不同的只是寄存器布局和具体的切换指令，而整套四阶段的先后顺序、禁迁移与关中断的安全边界、进入前防漏唤醒的检查，以及退回线程后的重入与休眠分支，在所有芯片上完全一致。因此我们在通用层只维护唯一一份线程执行状态机和安全作用域守卫，把控制流骨架彻底固定下来；同时把装卸硬件状态、切入客户机运行、读取退出原因和写入中断这几个真正跟芯片绑定的动作，提炼成一组极窄的底层硬件接口，由各芯片后端各自实现，并在编译阶段按目标芯片静态绑定。这样既不用把执行循环重复写四遍，改一处并发逻辑四种架构同时生效，也没有运行时动态分发的额外开销。既然虚拟处理器的运行主流程能抽成同一套骨架，那再往底层走一步，中断投递的状态管理能不能也照这个办法合并成一套通用代码？"""
     )
 
     # =========================================================================
@@ -859,46 +869,77 @@ Type-1 是指虚拟机管理器直接跑在硬件上，不像 KVM 运行虚拟�
     s8 = new_styled_slide(prs, stamps["gradient"])
     add_content_chrome(
         s8, True, "02 专用内核", AMBER_ORG,
-        "多架构差异：中断和 CPU 为什么要分开处理",
-        "用同一套运行流程管理 vCPU，各后端按自己的硬件规则投递中断和切换状态",
-        8, "架构调优",
-        "中断的确认、完成与重新投递由后端掌握，按各自硬件的规则调优。"
+        "多架构差异：为什么底层中断与处理器切换不能强行合并",
+        "同样叫「向客户机发中断」，不同芯片的硬件拓扑、确认时机与控制结构连形状都不同",
+        8, "保留差异",
+        "中断的路由、确认与再次投递规则由各芯片后端独立掌握，不为了表面整齐牺牲硬件加速能力。"
     )
-    irq_backends = [
-        (1.12, "ARM64：GIC", BRAND_BLUE, ICE_FILL, BORDER_BLU, [
-            ("中断投递", "用 GIC 的列表寄存器记录要交给客户机的虚拟中断。"),
-            ("处理完成", "物理中断直通要区分应答、优先级下降和去激活。"),
-            ("CPU 切换", "在 EL2 管理客户机寄存器和执行上下文。"),
-        ]),
-        (13.60, "x86-64：LAPIC / I/O APIC", AMBER_ORG, AMBER_BG, AMBER_BORDER, [
-            ("中断投递", "I/O APIC 负责外设路由，目标 vCPU 的虚拟 LAPIC 接收向量。"),
-            ("处理完成", "电平中断收到客户机 EOI 后，才决定是否继续投递。"),
-            ("CPU 切换", "Intel VMX 和 AMD SVM 各有自己的控制状态和进出路径。"),
-        ]),
-    ]
-    for x, title, color, fill, border, details in irq_backends:
-        add_card(s8, x, 2.84, 11.95, 7.15, title=title, accent=color, fill=WHITE, border=border, title_size=27, header_band=True)
-        for index, (label, description) in enumerate(details):
-            y = 3.84 + index * 1.91
-            add_rect(s8, x + 0.28, y, 11.39, 1.58, fill=fill, border=border, border_pt=1.0)
-            add_textbox(s8, x + 0.49, y + 0.13, 10.97, 0.43, label, size=23, color=color, bold=True)
-            add_textbox(s8, x + 0.49, y + 0.63, 10.97, 0.76, description, size=22, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE)
+    # Left Card: ARM64 GIC — single controller list registers + 3-stage hardware split
+    add_card(s8, 1.12, 2.84, 11.95, 7.22, title="ARM64：单控制器硬件列表与三阶段完成", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=26, header_band=True)
+    add_rect(s8, 1.42, 3.78, 4.15, 1.22, fill=ICE_FILL, border=BRAND_BLUE, border_pt=1.3)
+    add_textbox(s8, 1.54, 3.84, 3.91, 1.10, "外设 / 虚拟中断源\n产生待投递中断", size=20.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_arrow(s8, 5.69, 4.18, 0.62, 0.42, "right", BRAND_BLUE)
+    add_rect(s8, 6.43, 3.78, 6.33, 1.22, fill=ICE_FILL, border=BRAND_BLUE, border_pt=1.5)
+    add_textbox(s8, 6.58, 3.84, 6.03, 1.10, "GIC 硬件列表寄存器\n进入客户机后由硬件自动切换挂起与激活态", size=20, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_arrow(s8, 6.88, 5.06, 0.40, 0.30, "down", BRAND_BLUE)
 
-    add_rect(s8, 1.12, 10.27, 24.43, 1.15, fill=DARK_NAVY, border=None)
-    add_textbox(s8, 1.40, 10.36, 23.87, 0.97, "如果只留「向某个 vCPU 注入中断」这一句，控制器何时确认、何时可以再次投递，仍得由各架构自己处理。", size=23, color=WHITE, bold=True, valign=MSO_ANCHOR.MIDDLE)
+    add_rect(s8, 1.42, 5.42, 11.34, 2.52, fill=WHITE, border=BRAND_BLUE, border_pt=1.5, dash=MSO_LINE_DASH_STYLE.DASH)
+    add_textbox(s8, 1.62, 5.50, 10.94, 0.42, "物理中断直通的三阶段硬件状态拆分（状态全程留在 GIC 侧）", size=20.5, color=BRAND_BLUE, bold=True)
+    arm_stages = [
+        ("① 宿主应答", "读取中断号并认领", BRAND_BLUE, ICE_FILL),
+        ("② 宿主降优先级", "放行其他中断响应", BRAND_BLUE, ICE_FILL),
+        ("③ 客户机去激活", "处理完直写硬件结束", SAFE_GREEN, SAFE_BG),
+    ]
+    for idx, (st_lbl, st_sub, st_col, st_bg) in enumerate(arm_stages):
+        sx = 1.62 + idx * 3.82
+        add_rect(s8, sx, 6.02, 3.32, 1.70, fill=st_bg, border=st_col, border_pt=1.3)
+        add_textbox(s8, sx + 0.12, 6.12, 3.08, 0.48, st_lbl, size=21, color=st_col, bold=True, align=PP_ALIGN.CENTER)
+        add_textbox(s8, sx + 0.12, 6.66, 3.08, 0.92, st_sub, size=19.5, color=DARK_NAVY, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+        if idx < 2:
+            add_arrow(s8, sx + 3.40, 6.66, 0.34, 0.40, "right", BRAND_BLUE)
+
+    add_rect(s8, 1.42, 8.14, 11.34, 1.64, fill=ICE_FILL, border=BORDER_BLU, border_pt=1.3)
+    add_textbox(s8, 1.64, 8.22, 10.90, 1.48, "处理器切换路径：单一 EL2 虚拟化特权级，统一管理客户机系统寄存器与二阶段页表", size=20.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+
+    # Right Card: x86-64 — 2-chip routing + EOI rescan feedback loop + Intel/AMD fork
+    add_card(s8, 13.60, 2.84, 11.95, 7.22, title="x86-64：双控制器分级路由与双厂商分支", accent=AMBER_ORG, fill=WHITE, border=AMBER_BORDER, title_size=26, header_band=True)
+    add_rect(s8, 13.90, 3.78, 2.66, 1.22, fill=AMBER_BG, border=AMBER_ORG, border_pt=1.3)
+    add_textbox(s8, 13.98, 3.84, 2.50, 1.10, "外设中断线\n引脚电平信号", size=20, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_arrow(s8, 16.64, 4.18, 0.46, 0.42, "right", AMBER_ORG)
+    add_rect(s8, 17.18, 3.78, 3.82, 1.22, fill=AMBER_BG, border=AMBER_ORG, border_pt=1.3)
+    add_textbox(s8, 17.28, 3.84, 3.62, 1.10, "板级 I/O APIC\n查重定向表转成向量", size=20, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_arrow(s8, 21.08, 4.18, 0.46, 0.42, "right", AMBER_ORG)
+    add_rect(s8, 21.62, 3.78, 3.62, 1.22, fill=AMBER_BG, border=AMBER_ORG, border_pt=1.5)
+    add_textbox(s8, 21.72, 3.84, 3.42, 1.10, "核内虚拟 LAPIC\n按向量位图排队投递", size=20, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+
+    add_rect(s8, 13.90, 5.42, 11.34, 2.52, fill=RED_BG, border=ALERT_RED, border_pt=1.5, dash=MSO_LINE_DASH_STYLE.DASH)
+    add_textbox(s8, 14.10, 5.50, 10.94, 0.42, "电平触发中断的跨控制器闭环回写（两级状态机协同）", size=20.5, color=ALERT_RED, bold=True)
+    add_rect(s8, 14.10, 6.02, 4.86, 1.70, fill=WHITE, border=ALERT_RED, border_pt=1.2)
+    add_textbox(s8, 14.22, 6.10, 4.62, 1.54, "客户机写 EOI 通知处理完毕\n核内虚拟 LAPIC 拦截结束信号", size=19.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_arrow(s8, 19.12, 6.62, 0.88, 0.50, "lr", ALERT_RED)
+    add_rect(s8, 20.16, 6.02, 4.88, 1.70, fill=WHITE, border=ALERT_RED, border_pt=1.2)
+    add_textbox(s8, 20.28, 6.10, 4.64, 1.54, "反向通知板级虚拟 I/O APIC\n重查引脚电平决定是否继续投递", size=19.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+
+    add_rect(s8, 13.90, 8.14, 5.50, 1.64, fill=AMBER_BG, border=AMBER_ORG, border_pt=1.5)
+    add_textbox(s8, 14.04, 8.22, 5.22, 1.48, "Intel 路线（VMX）\n独立 VMCS 控制结构与专属切换指令", size=19.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_rect(s8, 19.74, 8.14, 5.50, 1.64, fill=PURP_BG, border=PURPLE, border_pt=1.5)
+    add_textbox(s8, 19.88, 8.22, 5.22, 1.48, "AMD 路线（SVM）\n独立 VMCB 控制块与事件注入格式", size=19.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+
+    add_rect(s8, 1.12, 10.28, 24.43, 1.14, fill=DARK_NAVY, border=None)
+    add_textbox(s8, 1.40, 10.36, 23.87, 0.98, "左图是单芯片三阶段硬件闭环，右图是双芯片协同回写加双厂商分支：底层规则不等价，必须留在各后端独立调优。", size=22.5, color=WHITE, bold=True, valign=MSO_ANCHOR.MIDDLE)
 
     add_notes(
         s8,
-        "多架构差异：中断和 CPU 为什么要分开处理",
+        "多架构差异：为什么底层中断与处理器切换不能强行合并",
         "02 专用内核",
-        1.7,
-        """做多架构适配时很容易有个直觉：既然两边都要给客户机发中断，干脆在底层定一个统一接口，就叫「向某个 vCPU 注入中断」。对比左右两张卡片，就能看出为什么这一个简单接口无法覆盖底层的真实硬件行为。
+        1.8,
+        """做多架构适配时很容易产生一个直觉：既然每种芯片都要给客户机发中断，干脆在最底层定一个统一接口，就叫「向某个虚拟处理器注入中断」。但把左右两张真实的硬件结构图摆在一起，一眼就能看出两边的状态流转连形状都不一样。
 
-先看左边 ARM64。宿主在 EL2 管理客户机上下文，虚拟中断要写进 GIC 的列表寄存器交给客户机；做物理中断直通时，一次中断还要区分宿主应答、优先级下降和客户机去激活三个阶段，状态一直由 GIC 这一侧维护。
+先看左边 ARM 架构。宿主机在单一的虚拟化特权级上管理上下文，虚拟中断直接写进中断控制器的硬件列表寄存器，进客户机后由硬件自动切换挂起和激活状态；如果做物理外设中断直通，一次中断还要拆成宿主机应答认领、宿主机降低优先级放行其他中断、最后由客户机处理完直接写硬件去激活三个阶段，状态全程由这一套控制器维护。
 
-再看右边 x86-64。外设中断先由 I/O APIC 路由成向量，再送给目标 vCPU 的虚拟 LAPIC；比如一条电平触发中断，必须等客户机写 EOI 通知处理结束，控制器才能决定要不要继续投递。单在 x86 内部，Intel VMX 和 AMD SVM 的控制状态和进出路径也是分开的。
+再看右边 x86 架构，完全是另一幅拓扑。外设引脚信号要先经过板级中断控制器查表转成中断向量，再发给目标核内的本地虚拟中断控制器排队；遇到一条电平触发中断，必须等客户机写结束寄存器，核内控制器拦截到信号后再反向通知板级控制器重查引脚电平，才能决定要不要继续投递。甚至同在 x86 内部，英特尔和超威两家的硬件控制块格式与进出指令也是完全分开的两套。
 
-这就是底下深色框说的意思：表面都叫发中断，但状态归谁管、什么时候确认完成、什么时候允许再次投递，底层硬件规则并不等价。如果在底层强行合并成一套状态机，要么迁就共同点、丢掉硬件原有的直通和加速能力，要么在通用代码里到处补架构分支。所以这一层我们保留差异，让各后端管好自己的中断状态机和 CPU 切换，按各自硬件独立调优。底层既然不能强行合并，那公共接口到底该定在哪一层？"""
+这就是底下深色框强调的结论：表面都叫发中断，但状态归谁管、什么时候算处理完、什么时候允许发下一次，底层硬件规则根本不等价。如果在最底层强行捏合成一套通用状态机，要么为了迁就共同点丢掉硬件原有的直通加速能力，要么在通用代码里塞满芯片判断分支。所以这一层我们明确保留差异，让各后端管好自己的中断状态机。底层既然不能强行合并，那公共接口到底应该定在哪一层？"""
     )
 
     # =========================================================================
@@ -907,290 +948,398 @@ Type-1 是指虚拟机管理器直接跑在硬件上，不像 KVM 运行虚拟�
     s9 = new_styled_slide(prs, stamps["white"])
     add_content_chrome(
         s9, False, "02 专用内核", SAFE_GREEN,
-        "求同存异：往上找共同的行为",
-        "底层保留硬件规则，往上找到行为一致的一层，再把共用流程提出来",
+        "求同存异：从底层异构硬件逐层向上收敛共性",
+        "不在顶层预设大而全的统一接口，而是保留底层四路硬件差异，走到行为真正一致的那一层再提取共用机制",
         9, "分层边界",
-        "共用层负责等与唤醒，后端判断本架构的事件是否就绪。"
+        "异构硬件原语留在各后端，部分架构能力独立成窄接口，完全一致的等待与执行骨架只维护一份。"
     )
-    add_card(s9, 1.12, 2.84, 11.72, 8.65, title="从硬件差异往上找", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=27, header_band=True)
-    layers = [
-        ("所有架构需要", "Architecture 组合运行、机器资源、客户机启动和镜像装载。", BRAND_BLUE, ICE_FILL),
-        ("行为相同就共用", "vCPU 进入与退出的顺序共用一份，等待通知也共用一份。", SAFE_GREEN, SAFE_BG),
-        ("只有部分架构需要", "ARM64 与 RISC-V 单独实现 CpuOn，并由编译器检查调用。", PURPLE, PURP_BG),
-        ("硬件规则不同", "寄存器、GIC、APIC 等状态和操作留在架构后端。", AMBER_ORG, AMBER_BG),
-    ]
-    for index, (label, description, color, fill) in enumerate(layers):
-        y = 3.86 + index * 1.78
-        add_rect(s9, 1.48, y, 10.55, 1.49, fill=fill, border=color, border_pt=1.25)
-        add_textbox(s9, 1.70, y + 0.10, 10.11, 0.45, label, size=24, color=color, bold=True)
-        add_textbox(s9, 1.70, y + 0.61, 10.11, 0.72, description, size=21, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE)
-        if index < len(layers) - 1:
-            add_arrow(s9, 12.22, y + 1.30, 0.34, 0.62, "up", DARK_NAVY)
+    # Left Card: Bottom-up Visual Convergence Lattice (4 pillars -> asymmetric 2+2 -> 1 shared bar -> 1 top contract)
+    add_card(s9, 1.12, 2.84, 11.95, 8.65, title="结构收敛：从四路异构底座向上提取共性", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=26, header_band=True)
 
-    add_card(s9, 13.12, 2.84, 12.43, 8.65, title="例子：vCPU 刚要休眠时，中断到了", accent=SAFE_GREEN, fill=WHITE, border=SAFE_BORDER, title_size=25, header_band=True)
-    wait_parts = [
-        ("各自判断事件", "ARM64 检查虚拟中断和计时器。x86 检查自己有没有待处理事件。", AMBER_ORG, AMBER_BG),
-        ("共用等待和唤醒", "VcpuWait 把后端的检查接到宿主等待队列。通知会保留，唤醒后重新检查。", SAFE_GREEN, SAFE_BG),
-        ("上层只看 vCPU 是否该继续", "调度和执行流程走共用路径，硬件怎么判断事件仍由后端决定。", BRAND_BLUE, ICE_FILL),
+    # Layer 1 (Top - All 4 converged)
+    add_rect(s9, 1.44, 3.78, 11.31, 1.38, fill=ICE_FILL, border=BRAND_BLUE, border_pt=2.0)
+    add_textbox(s9, 1.66, 3.86, 10.87, 0.44, "顶层统一架构入口（四种架构全部满足）", size=22.5, color=BRAND_BLUE, bold=True)
+    add_textbox(s9, 1.66, 4.34, 10.87, 0.72, "组合运行、机器资源、启动交接与镜像装载四组基础契约，通用代码零架构判断", size=19.5, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE)
+
+    add_arrow(s9, 6.88, 5.22, 0.42, 0.32, "up", BRAND_BLUE)
+
+    # Layer 2 (Shared default mechanisms)
+    add_rect(s9, 1.44, 5.60, 11.31, 1.38, fill=SAFE_BG, border=SAFE_GREEN, border_pt=2.0)
+    add_textbox(s9, 1.66, 5.68, 10.87, 0.44, "共享默认机制层（行为一致处只维护唯一一份）", size=22.5, color=SAFE_GREEN, bold=True)
+    add_textbox(s9, 1.66, 6.16, 10.87, 0.72, "虚拟处理器四阶段执行顺序、防漏唤醒等待队列等共同算法全部收拢于此", size=19.5, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE)
+
+    add_arrow(s9, 4.05, 7.04, 0.38, 0.32, "up", PURPLE)
+    add_arrow(s9, 9.75, 7.04, 0.38, 0.32, "up", SLATE_DARK)
+
+    # Layer 3 (Asymmetric partial capability: solid 2-arch vs dashed unsupported 2-arch)
+    add_rect(s9, 1.44, 7.42, 5.62, 1.48, fill=PURP_BG, border=PURPLE, border_pt=1.8)
+    add_textbox(s9, 1.60, 7.50, 5.30, 0.44, "部分架构窄接口：从核唤醒", size=21, color=PURPLE, bold=True)
+    add_textbox(s9, 1.60, 7.98, 5.30, 0.82, "仅 ARM64 与 RISC-V 显式实现\n响应客户机动态唤醒从核请求", size=18.5, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE)
+
+    add_rect(s9, 7.26, 7.42, 5.49, 1.48, fill=LIGHT_GRAY, border=GRAY_BORDER, border_pt=1.6, dash=MSO_LINE_DASH_STYLE.DASH)
+    add_textbox(s9, 7.42, 7.50, 5.17, 0.44, "x86-64 / 龙芯：不写空实现", size=21, color=SLATE_DARK, bold=True)
+    add_textbox(s9, 7.42, 7.98, 5.17, 0.82, "无此调用路径则不实现该接口\n一旦误调在编译期直接报错拦截", size=18.5, color=MUTED_TEXT, valign=MSO_ANCHOR.MIDDLE)
+
+    # Layer 4 (Bottom - 4 distinct narrow hardware silos!)
+    hw_pillars = [
+        ("ARM64", "GIC 列表寄存器\nEL2 系统寄存器", BRAND_BLUE, ICE_FILL),
+        ("RISC-V", "PLIC 外设中断\nHS 扩展寄存器", SAFE_GREEN, SAFE_BG),
+        ("x86-64", "I/O·本地 APIC\nVMX / SVM 控制块", AMBER_ORG, AMBER_BG),
+        ("龙芯 LoongArch", "LVZ 虚拟化扩展\n私有中断同步槽", PURPLE, PURP_BG),
     ]
-    for index, (label, description, color, fill) in enumerate(wait_parts):
-        y = 3.86 + index * 2.36
-        add_rect(s9, 13.45, y, 11.77, 2.01, fill=fill, border=color, border_pt=1.3)
-        add_textbox(s9, 13.67, y + 0.13, 11.33, 0.46, label, size=24, color=color, bold=True)
-        add_textbox(s9, 13.67, y + 0.66, 11.33, 1.12, description, size=22, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.16)
+    for pi, (pname, pdesc, pcol, pbg) in enumerate(hw_pillars):
+        px = 1.44 + pi * 2.88
+        add_arrow(s9, px + 1.16, 8.96, 0.34, 0.30, "up", pcol)
+        add_rect(s9, px, 9.32, 2.67, 1.88, fill=pbg, border=pcol, border_pt=1.8)
+        add_rect(s9, px + 0.08, 9.40, 2.51, 0.48, fill=pcol, border=None, rounded=True, radius=0.10)
+        add_textbox(s9, px + 0.10, 9.40, 2.47, 0.48, pname, size=18.5, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+        add_textbox(s9, px + 0.08, 9.94, 2.51, 1.18, pdesc, size=17.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.18)
+
+    # Right Card: Y-shaped Convergence Funnel for VcpuWait Race Prevention
+    add_card(s9, 13.40, 2.84, 12.15, 8.65, title="运行实例：休眠前夕中断到达（异构检查汇入共用等待）", accent=SAFE_GREEN, fill=WHITE, border=SAFE_BORDER, title_size=24.5, header_band=True)
+
+    chip_checks = [
+        ("ARM64 私有检查", "查 GIC 虚拟中断挂起\n与核内虚拟定时器状态", BRAND_BLUE, ICE_FILL),
+        ("x86-64 私有检查", "查虚拟 LAPIC 向量位图\n与待注入事件标志", AMBER_ORG, AMBER_BG),
+        ("RISC-V / 龙芯检查", "查架构中断挂起寄存器\n与核间唤醒通知槽", PURPLE, PURP_BG),
+    ]
+    for ci, (ctitle, cdesc, ccol, cbg) in enumerate(chip_checks):
+        cx = 13.72 + ci * 3.92
+        add_rect(s9, cx, 3.78, 3.67, 1.96, fill=cbg, border=ccol, border_pt=1.6)
+        add_textbox(s9, cx + 0.12, 3.88, 3.43, 0.46, ctitle, size=20.5, color=ccol, bold=True, align=PP_ALIGN.CENTER)
+        add_textbox(s9, cx + 0.12, 4.40, 3.43, 1.22, cdesc, size=18.5, color=DARK_NAVY, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.18)
+        add_arrow(s9, cx + 1.65, 5.82, 0.36, 0.36, "down", ccol)
+
+    add_rect(s9, 14.52, 6.24, 9.91, 0.72, fill=DARK_NAVY, border=None, rounded=True, radius=0.18)
+    add_textbox(s9, 14.68, 6.26, 9.59, 0.68, "向上只暴露一个最小问题：「当前是否有事件就绪？」", size=20.5, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_arrow(s9, 19.26, 7.02, 0.42, 0.34, "down", SAFE_GREEN)
+
+    add_rect(s9, 13.72, 7.42, 11.51, 2.08, fill=SAFE_BG, border=SAFE_GREEN, border_pt=2.0)
+    add_textbox(s9, 13.96, 7.52, 11.03, 0.46, "四架构共用一份防漏唤醒等待队列", size=22.5, color=SAFE_GREEN, bold=True)
+    add_textbox(
+        s9, 13.96, 8.04, 11.03, 1.34,
+        "① 准备休眠前先记录通知代次 → ② 回调上面的最小接口复查硬件就绪态 →\n"
+        "③ 确认无事件才挂起宿主线程；其间到达的任何中断都会触发唤醒重查，绝不漏通知",
+        size=19.5, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.22
+    )
+    add_arrow(s9, 19.26, 9.56, 0.42, 0.32, "down", BRAND_BLUE)
+
+    add_rect(s9, 13.72, 9.94, 11.51, 1.26, fill=ICE_FILL, border=BRAND_BLUE, border_pt=1.5)
+    add_textbox(s9, 13.96, 10.02, 11.03, 1.10, "上层通用执行线程：醒来后直接回到四阶段循环，完全不感知底层芯片差异", size=20.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
 
     add_notes(
         s9,
-        "求同存异：往上找共同的行为",
+        "求同存异：从底层异构硬件逐层向上收敛共性",
         "02 专用内核",
         1.9,
-        """如果先在顶层定一个大而全的接口让各个架构勉强适配，底下很容易塞满空实现和架构特判。我们的「求同存异」反过来做：从底层的硬件差异出发，一层一层往上找最小共同接口，走到哪一层行为真正一致了，才在哪一层提取共用逻辑。
+        """如果一开始就在顶层定一个大而全的统一接口让四种芯片去填空，底下一定会塞满空实现和芯片名称判断。我们的「求同存异」反过来走：从底层的真实硬件差异出发，一层一层往上收敛，走到哪一层语义真正一致了，才在哪一层提取共用代码。
 
-先看左图，顺着箭头从下往上走。最底下，寄存器、GIC、APIC 这些规则不同的操作留在架构后端。往上一层，遇到只有部分架构才有的能力，比如响应客户机唤醒从核的 CpuOn，只有 ARM64 和 RISC-V 需要处理；我们就单独拆成最小接口 CpuOn，只由具备能力的后端实现，其他架构不需要编写空实现来凑齐接口，发生误调用时编译期会直接报错。再往上，进出顺序、等待唤醒这些行为一致的流程只维护一份，后端只暴露最小的配合接口。到了最顶层，Architecture 组合所有架构都具备的运行、机器资源、客户机启动和镜像装载四组最小接口，编译时绑定后端，通用代码不再写架构分支。
+看左图从下往上的收敛结构。最底下四根独立柱子，分别保留四种芯片各自的寄存器、页表与中断硬件原语，绝不强行拉平。往上一层，遇到只有部分芯片才有的能力，比如响应客户机动态唤醒从核的请求，只有 ARM64 和 RISC-V 需要处理；我们就把它拆成独立的窄接口，只由这两类芯片实现，右边的 x86 和龙芯根本不写空实现凑数，万一被误调用，编译阶段直接报错拦截。再往上走到绿色层，像虚拟处理器的四阶段进出顺序、休眠唤醒的并发保护，四种芯片行为完全一致，就收拢成唯一一份共享机制。最顶层再把所有芯片都具备的运行、机器资源、启动交接和镜像装载四组能力组合成统一入口，上层通用代码一行芯片判断都不用写。
 
-右边的 VcpuWait 就是具体例子。vCPU 正要休眠时，如果刚检查完没有待处理事件、还没真正进入休眠时中断恰好到达，一旦漏掉这次唤醒通知，vCPU 就会一直卡在休眠状态。看右上第一格，ARM64 查虚拟中断和计时器，x86 查自己的待处理事件，底层的判断逻辑无法直接统一；但往上提一步，后端只需暴露一个最小接口，回答当前有没有事件就绪。中间的 VcpuWait 把这项检查接到宿主等待队列，保留休眠前后的唤醒通知，醒来再复查，这套防丢唤醒流程四种架构共用一份。最下面的调度和执行层只看 vCPU 该不该继续运行。到这里，跨架构的裸机宿主底座就搭稳了。但平时在板卡上管理多台虚拟机，总不能只靠一根串口线敲命令；要想直接在板卡上跑起网页管理台和远程终端，裸机宿主就得能用上成熟的应用层网络生态。"""
+右图就是一个典型的「底异上同」实例。当虚拟处理器空闲准备休眠时，最怕刚检查完没事件、还没真正睡下，中断恰好赶到，漏掉通知就会一直卡在休眠状态。看上方三格，怎么判断有没有待处理事件，ARM 要查虚拟中断和定时器，x86 要查本地中断向量位图，RISC-V 和龙芯各有各的寄存器，底层检查方式完全不同；但往上收敛一步，各后端只需要回答一个最简单的问题：当前有没有事件就绪。中间绿框里的防漏唤醒队列先记录通知代次、再回调这个就绪接口复查，确认没事件才挂起宿主线程，这套防竞态逻辑四种架构完全共用一份。到这里，跨架构的裸机宿主底座就真正立住了。"""
     )
 
     # =========================================================================
-    # SLIDE 10: Rust 标准库与 Web 实拍
+    # SLIDE 10: 03 安全隔离——通过 Rust std 收敛底层调度与 unsafe 汇编
     # =========================================================================
     s10 = new_styled_slide(prs, stamps["gradient"])
     add_content_chrome(
-        s10, True, "03 内核态 std", BRAND_BLUE,
-        "宿主运行 Rust 标准库：Web 管理台与终端",
-        "ax-std 将宿主的线程和网络能力接到 Rust 标准库，管理服务直接跑在板卡上",
-        10, "管理服务",
-        "宿主运行 Tokio 和 Axum，客户机拥有各自的系统与串口。"
+        s10, True, "03 安全隔离", SAFE_GREEN,
+        "安全隔离：通过 Rust std 收敛底层调度与不安全操作",
+        "以内核态标准库为安全分界线：向下收敛复杂调度与 unsafe 汇编，向上提供应用级安全开发环境",
+        10, "隔离价值",
+        "既保留内核态直接运行的零客户机与零系统调用开销，又获得应用层 Safe Rust 的安全保障与 crate 生态。"
     )
-    service_steps = [
-        ("宿主能力", "ArceOS 底座提供线程和网络。", BRAND_BLUE),
-        ("接上 Rust 标准库", "ax-std 给标准库提供所需的宿主接口。", SAFE_GREEN),
-        ("网页与终端", "Tokio 和 Axum 在宿主线程里处理请求。", PURPLE),
-    ]
-    for index, (label, description, color) in enumerate(service_steps):
-        x = 1.12 + index * 8.28
-        add_card(s10, x, 2.82, 7.86, 1.85, title=label, accent=color, fill=WHITE, border=BORDER_BLU, title_size=23)
-        add_textbox(s10, x + 0.24, 3.50, 7.38, 0.89, description, size=21, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE)
+    # Left Card: Kernel-space safety isolation divided by Rust std
+    add_card(s10, 1.12, 2.84, 12.60, 8.65, title="内核态中的安全分界线：以 std 隔离底层特权与上层业务", accent=DARK_NAVY, fill=WHITE, border=BORDER_BLU, title_size=24.5, header_band=True)
 
-    screenshots = [
-        (1.12, media["web_ui"], "Web 管理台：查看客户机状态、内存和 vCPU", BRAND_BLUE),
-        (13.68, media["web_term"], "浏览器终端：通过 WebSocket 连接客户机串口", SAFE_GREEN),
+    # Above std: Application-level safe layer in kernel mode
+    add_rect(s10, 1.44, 3.76, 11.96, 2.40, fill=SAFE_BG, border=SAFE_GREEN, border_pt=2.0, rounded=True, radius=0.06)
+    add_rect(s10, 1.64, 3.94, 3.36, 2.04, fill=SAFE_GREEN, border=None, rounded=True, radius=0.08)
+    add_textbox(s10, 1.70, 3.98, 3.24, 1.96, "std 之上\n应用级安全层\n（100% Safe Rust）", size=20, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_textbox(
+        s10, 5.18, 3.86, 8.02, 2.20,
+        "• 承载实时控制任务、虚拟化编排、网页管理台与远程终端\n"
+        "• 仅通过标准线程、同步锁、文件与网络等类型安全接口编程\n"
+        "• 语法层面隔绝裸指针、关中断与寄存器，业务缺陷写不坏内核",
+        size=19.5, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.22
+    )
+
+    # The std Isolation Boundary Bar
+    add_rect(s10, 1.44, 6.32, 11.96, 0.80, fill=DARK_NAVY, border=SAFE_GREEN, border_pt=1.8, rounded=True, radius=0.14)
+    add_textbox(
+        s10, 1.60, 6.36, 11.64, 0.72,
+        "▲ 向上提供标准库安全契约   |   内核态 Rust std 隔离层（ax-std）   |   ▼ 向下收敛底层特权机制",
+        size=18.5, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE
+    )
+
+    # Below std: Converged low-level scheduling + tapered unsafe assembly core
+    add_rect(s10, 1.44, 7.28, 11.96, 3.94, fill=LIGHT_GRAY, border=ALERT_RED, border_pt=1.6, dash=MSO_LINE_DASH_STYLE.DASH, rounded=True, radius=0.06)
+    add_textbox(s10, 1.66, 7.36, 11.52, 0.42, "std 之下 · 底层复杂调度与 unsafe 汇编集中收敛区（内部封闭审计）", size=19, color=ALERT_RED, bold=True)
+
+    add_rect(s10, 1.68, 7.86, 11.48, 1.34, fill=AMBER_BG, border=AMBER_ORG, border_pt=1.5, rounded=True, radius=0.05)
+    add_textbox(
+        s10, 1.86, 7.94, 11.12, 1.18,
+        "底层调度与同步收敛：多核抢占调度切换 · 关中断自旋锁 · 页表分配 · 跨内核硬件驱动\n"
+        "（所有容易因关抢占、死锁或并发失序导致内核崩溃的底层状态机全部封装在此层内部）",
+        size=18.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.18
+    )
+
+    add_arrow(s10, 2.06, 9.86, 0.72, 0.44, "right", ALERT_RED)
+    add_rect(s10, 2.90, 9.36, 9.04, 1.66, fill=RED_BG, border=ALERT_RED, border_pt=2.0, rounded=True, radius=0.06)
+    add_textbox(
+        s10, 3.08, 9.44, 8.68, 1.50,
+        "最小 unsafe 汇编底座（极窄可信基）\n"
+        "特权级进出汇编 · 处理器寄存器保存恢复 · 二阶段页表与受控寄存器映射",
+        size=19, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.20
+    )
+    add_arrow(s10, 12.06, 9.86, 0.72, 0.44, "left", ALERT_RED)
+
+    # Right Card: Three Core Payoffs + Codebase Audit Proof
+    add_card(s10, 14.04, 2.84, 11.51, 8.65, title="std 安全隔离带来的三大收益与源码实证", accent=SAFE_GREEN, fill=WHITE, border=SAFE_BORDER, title_size=24.5, header_band=True)
+
+    payoffs = [
+        ("① 内核态安全应用开发", "业务代码享有应用层内存与并发安全，逻辑错误不会破坏宿主内核。", SAFE_GREEN, SAFE_BG),
+        ("② 省掉实时客户机与客户机开销", "实时控制直接在宿主内核态安全运行，免去客户机内存与中断转发损耗。", AMBER_ORG, AMBER_BG),
+        ("③ 复用 std crate 大幅简化开发", "直接引入 Tokio、Axum、Serde 等标准库生态，告别裸机从零手写轮子。", BRAND_BLUE, ICE_FILL),
     ]
-    for x, blob, caption, color in screenshots:
-        add_rect(s10, x, 4.86, 11.87, 6.68, fill=WHITE, border=color, border_pt=1.6, rounded=True, radius=0.03)
-        add_picture_fit(s10, blob, x + 0.14, 4.95, 11.59, 5.75, frame_border=None, pad=0.04)
-        add_textbox(s10, x + 0.12, 10.80, 11.63, 0.62, caption, size=20, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    for pi, (ptitle, pdesc, pcol, pbg) in enumerate(payoffs):
+        py = 3.74 + pi * 1.32
+        add_rect(s10, 14.34, py, 10.91, 1.18, fill=pbg, border=pcol, border_pt=1.5, rounded=True, radius=0.06)
+        add_textbox(s10, 14.54, py + 0.08, 10.51, 0.44, ptitle, size=20.5, color=pcol, bold=True)
+        add_textbox(s10, 14.54, py + 0.54, 10.51, 0.54, pdesc, size=18.5, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE)
+
+    add_rect(s10, 14.34, 7.80, 10.91, 3.42, fill=LIGHT_GRAY, border=GRAY_BORDER, border_pt=1.3, rounded=True, radius=0.06)
+    add_rect(s10, 14.54, 7.96, 10.51, 0.98, fill=SAFE_BG, border=SAFE_GREEN, border_pt=1.6, rounded=True, radius=0.06)
+    add_textbox(s10, 14.68, 8.00, 2.85, 0.90, "9 / 16", size=44, color=SAFE_GREEN, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_textbox(
+        s10, 17.60, 8.02, 7.28, 0.86,
+        "16 个虚拟化实现包中 9 个实现 0 处 unsafe\n合计 55,809 行复杂协议与设备逻辑纯安全",
+        size=18.5, color=DARK_NAVY, bold=True, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.18
+    )
+
+    safe_crates = [
+        ("axdevice 设备图与授权", "27,636 行 · 0 unsafe"),
+        ("aarch64_sysreg 寄存器解码", "12,735 行 · 0 unsafe"),
+        ("axvirtio 磁盘与网络协议", "12,646 行 · 0 unsafe"),
+        ("axvmconfig 配置与虚拟中断", "2,792 行 · 0 unsafe"),
+    ]
+    for sci, (sc_name, sc_stat) in enumerate(safe_crates):
+        sc_col = sci % 2
+        sc_row = sci // 2
+        scx = 14.54 + sc_col * 5.34
+        scy = 9.10 + sc_row * 1.00
+        add_rect(s10, scx, scy, 5.17, 0.88, fill=WHITE, border=SAFE_BORDER, border_pt=1.2, rounded=True, radius=0.05)
+        add_textbox(s10, scx + 0.14, scy + 0.06, 4.89, 0.40, sc_name, size=18, color=DARK_NAVY, bold=True)
+        add_textbox(s10, scx + 0.14, scy + 0.44, 4.89, 0.36, sc_stat, size=17.5, color=SAFE_GREEN, bold=True)
 
     add_notes(
         s10,
-        "宿主运行 Rust 标准库：Web 管理台与终端",
-        "03 内核态 std",
-        1.5,
-        """比如在浏览器点一下「启动客户机」，AxVisor 要接收网络请求、找到客户机配置，再把结果返回给浏览器。我们希望能直接复用 Tokio 和 Axum，它们所需的线程和网络接口在这里由宿主内核直接提供。
+        "安全隔离：通过 Rust std 收敛底层调度与不安全操作",
+        "03 安全隔离",
+        1.9,
+        """搭好了跨架构宿主底座，接下来进入另一个核心话题：宿主机内部的安全隔离。在传统 C 语言编写的内核或虚拟机监控器里，内核态内部是没有安全边界的，上层逻辑和底层的内联汇编、关中断锁、调度器切换混在同一片地址空间里，写错一个指针就可能把整个宿主机搞崩溃。这也是为什么传统轻量监控器不敢在宿主内核里跑复杂业务，什么功能都只能往客户机里塞。
 
-上方三格展示了接入方式。ArceOS 底座提供线程和网络，ax-std 把这些能力对接到 Rust 标准库，Tokio 和 Axum 就能在宿主的管理线程里运行。左边的实拍可以查看 Linux 客户机状态、内存和虚拟核，右边通过 WebSocket 连接客户机串口，实时查看启动输出。
+看左图，AxVisor 在宿主内核内部引入了内核态 Rust 标准库，把它做成一道清晰的安全隔离分界线。在这条分界线之下，我们把两类最危险的操作全部收敛封装起来：一类是最底层的特权级进出汇编、寄存器切换和二阶段页表硬件映射，另一类是容易因关抢占或并发失序引发死锁的多核调度器和底层同步锁。而在标准库分界线之上，向上只暴露类型安全的线程、同步、文件与网络接口，并且通过函数直调底层模块，没有传统系统调用的切换损耗。
 
-处理网页请求的也是宿主线程。如果把电机控制任务也放到宿主里，这两类任务对调度的要求就完全不同了。"""
+如右图所示，这种「底层收敛、上层安全」的隔离结构直接带来了三项关键收益：第一是实现了内核态的安全应用开发，标准库之上的代码完全使用安全 Rust 编写，连虚拟化核心层也有超过五万五千行协议与设备逻辑做到了零处不安全代码；第二是正因为宿主内核态足够安全，原本为了隔离风险而不得不单开的实时客户机现在可以直接省掉，在内核态直跑实时应用，省去整套客户机开销；第三是可以直接使用成熟的标准库开源组件，大幅简化业务开发。我们先看它怎么帮系统省掉实时客户机开销。"""
     )
 
     # =========================================================================
-    # SLIDE 11: 宿主即实时内核——实时调度与四级显式锁
+    # SLIDE 11: 03 安全隔离——省掉实时客户机，内核态直跑零客户机开销
     # =========================================================================
     s11 = new_styled_slide(prs, stamps["gradient"])
     add_content_chrome(
-        s11, True, "04 实时内核", AMBER_ORG,
-        "宿主即实时内核：实时调度与四级显式锁",
-        "AxVisor 宿主机本身基于 ArceOS 实时内核构建，对延迟敏感的任务可直接运行在宿主态，免去虚拟化转发",
-        11, "实时调度",
-        "Hypervisor 自带 Deadline/RT 调度与 PI 锁，与硬件隔离 Linux 客户机协同部署。"
+        s11, True, "03 安全隔离", AMBER_ORG,
+        "省掉实时客户机：内核态安全直跑实时任务",
+        "依托 std 上层的应用级安全保障与底层实时调度，关键控制直接在宿主内核态运行，省掉客户机开销",
+        11, "零客户机损耗",
+        "既省去单独维护实时客户机的镜像与内存开销，又消除物理中断拦截与虚拟中断转发延迟。"
     )
-    add_card(s11, 1.12, 2.84, 12.60, 8.65, title="混合关键性部署：实时任务的位置差异", accent=AMBER_ORG, fill=WHITE, border=AMBER_BORDER, title_size=26, header_band=True)
+    add_card(s11, 1.12, 2.84, 12.60, 8.65, title="为什么要省掉独立实时客户机：两套路径对比", accent=AMBER_ORG, fill=WHITE, border=AMBER_BORDER, title_size=25, header_band=True)
 
-    add_rect(s11, 1.42, 3.76, 12.00, 3.00, fill=LIGHT_GRAY, border=GRAY_BORDER, border_pt=1.5, rounded=True, radius=0.06)
-    add_textbox(s11, 1.62, 3.84, 11.60, 0.44, "部署位置一：在 RTOS 客户机里运行实时任务", size=22, color=SLATE_DARK, bold=True)
-    add_rect(s11, 1.72, 4.40, 5.20, 1.05, fill=WHITE, border=GRAY_BORDER, border_pt=1.2, rounded=True, radius=0.06)
-    add_textbox(s11, 1.82, 4.44, 5.00, 0.96, "Guest A：复杂 Linux\n（AI / 视觉 / 界面）", size=21, color=BODY_TEXT, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
-    add_rect(s11, 7.62, 4.40, 5.50, 1.05, fill=RED_BG, border=ALERT_RED, border_pt=1.4, rounded=True, radius=0.06)
-    add_textbox(s11, 7.72, 4.44, 5.30, 0.96, "Guest B：实时 RTOS\n由客户机接收设备中断", size=21, color=ALERT_RED, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
-    add_rect(s11, 1.72, 5.64, 11.40, 0.90, fill=SLATE_DARK, border=None, rounded=True, radius=0.06)
-    add_textbox(s11, 1.82, 5.68, 11.20, 0.82, "虚拟机管理器负责分配硬件资源和处理客户机中断", size=21, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    # Path 1: Traditional Guest RTOS (extra VM memory + extra trap/vIRQ hop)
+    add_rect(s11, 1.42, 3.74, 12.00, 3.24, fill=LIGHT_GRAY, border=GRAY_BORDER, border_pt=1.5, rounded=True, radius=0.05)
+    add_textbox(s11, 1.62, 3.82, 11.60, 0.42, "传统做法：宿主缺乏安全边界与调度，被迫另开实时客户机", size=20.5, color=SLATE_DARK, bold=True)
+    add_rect(s11, 1.62, 4.34, 3.24, 2.44, fill=WHITE, border=GRAY_BORDER, border_pt=1.2, rounded=True, radius=0.05)
+    add_textbox(s11, 1.72, 4.44, 3.04, 2.24, "客户机 A\n复杂 Linux\n（视觉 / AI / 界面）", size=19.5, color=BODY_TEXT, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
 
-    add_rect(s11, 1.42, 7.00, 12.00, 4.24, fill=AMBER_BG, border=AMBER_ORG, border_pt=2.2, rounded=True, radius=0.06)
-    add_textbox(s11, 1.62, 7.08, 11.60, 0.44, "AxVisor 混合部署：宿主运行实时任务 + 硬件隔离 Linux 客户机", size=23, color=AMBER_ORG, bold=True)
-    add_rect(s11, 1.72, 7.66, 5.45, 1.68, fill=WHITE, border=SAFE_GREEN, border_pt=1.8, rounded=True, radius=0.06)
-    add_textbox(s11, 1.84, 7.72, 5.21, 1.56, "硬件隔离客户机（Guest）\nLinux / StarryOS / Zephyr\n按各自配置分配和使用资源", size=20, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.18)
-    add_rect(s11, 7.42, 7.66, 5.70, 1.68, fill=SAFE_GREEN, border=None, rounded=True, radius=0.06)
-    add_textbox(s11, 7.54, 7.72, 5.46, 1.56, "宿主内核直接运行实时任务\n硬件中断直达、无虚拟化转发\n可直接使用 Rust std 与网络栈", size=21, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.20)
-    add_rect(s11, 1.72, 9.54, 11.40, 1.44, fill=DARK_NAVY, border=None, rounded=True, radius=0.06)
-    add_textbox(s11, 1.84, 9.60, 11.16, 1.32, "AxVisor 宿主 = ArceOS 实时底座（实时调度 + std）+ 17 个虚拟化 crate\n实时控制与管控面运行在宿主态  ·  复杂通用负载运行在隔离客户机", size=20, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.26)
+    add_rect(s11, 5.06, 4.34, 2.52, 1.06, fill=RED_BG, border=ALERT_RED, border_pt=1.3, rounded=True, radius=0.05)
+    add_textbox(s11, 5.14, 4.38, 2.36, 0.98, "电机 / 传感器\n物理硬件中断", size=18.5, color=ALERT_RED, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_arrow(s11, 7.66, 4.68, 0.42, 0.36, "right", ALERT_RED)
+    add_rect(s11, 8.16, 4.34, 5.04, 1.06, fill=SLATE_DARK, border=None, rounded=True, radius=0.05)
+    add_textbox(s11, 8.26, 4.38, 4.84, 0.98, "开销一：拦截物理中断 → 转换注入虚拟中断", size=18, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_arrow(s11, 10.48, 5.44, 0.36, 0.28, "down", ALERT_RED)
+    add_rect(s11, 5.06, 5.76, 8.14, 1.02, fill=WHITE, border=ALERT_RED, border_pt=1.4, dash=MSO_LINE_DASH_STYLE.DASH, rounded=True, radius=0.05)
+    add_textbox(s11, 5.18, 5.80, 7.90, 0.94, "开销二：单独预留实时客户机内存，等虚拟核调度上核才响应", size=18, color=ALERT_RED, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
 
-    add_card(s11, 14.04, 2.84, 11.51, 4.10, title="调度策略：三类实时与通用调度（components/ax-task）", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=24, header_band=True)
+    # Path 2: AxVisor Host-Direct Safe RT on std + Isolated Linux Guest
+    add_rect(s11, 1.42, 7.16, 12.00, 4.08, fill=AMBER_BG, border=AMBER_ORG, border_pt=2.2, rounded=True, radius=0.05)
+    add_textbox(s11, 1.62, 7.24, 11.60, 0.42, "AxVisor 做法：std 安全层直跑实时应用（省掉实时客户机开销）", size=21, color=AMBER_ORG, bold=True)
+    add_rect(s11, 1.62, 7.76, 4.46, 1.82, fill=WHITE, border=BRAND_BLUE, border_pt=1.8, rounded=True, radius=0.05)
+    add_textbox(s11, 1.74, 7.84, 4.22, 1.66, "硬件隔离 Linux 客户机\n承载视觉 / AI / 复杂应用\n故障封锁在二阶段页表内", size=19, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.18)
+
+    add_rect(s11, 6.28, 7.76, 2.38, 1.82, fill=SAFE_BG, border=SAFE_GREEN, border_pt=1.6, rounded=True, radius=0.05)
+    add_textbox(s11, 6.36, 7.84, 2.22, 1.66, "控制外设\n硬件中断\n直达宿主", size=19.5, color=SAFE_GREEN, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_arrow(s11, 8.74, 8.46, 0.48, 0.42, "right", SAFE_GREEN)
+    add_rect(s11, 9.30, 7.76, 3.90, 1.82, fill=SAFE_GREEN, border=None, rounded=True, radius=0.05)
+    add_textbox(s11, 9.40, 7.84, 3.70, 1.66, "宿主 std 安全实时线程\n省去实时客户机内存\n零二阶段页表与转发损耗", size=18.5, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.18)
+
+    add_rect(s11, 1.62, 9.72, 11.58, 1.34, fill=DARK_NAVY, border=None, rounded=True, radius=0.05)
+    add_textbox(s11, 1.76, 9.78, 11.30, 1.22, "硬件虚拟化隔离外部重型 Linux 负载  +  软件 std 边界安全承载宿主内核态实时控制（同时保留托管独立实时客户机能力）", size=18.5, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.22)
+
+    add_card(s11, 14.04, 2.84, 11.51, 4.10, title="std 之下封装的三层抢占调度（保障实时线程严格优先）", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=23.5, header_band=True)
     sched_rows = [
-        ("Deadline 调度（EDF / CBS）", "最高优先级（Rank 1），按绝对截止期与时间预算调度周期性实时任务", ALERT_RED, RED_BG),
-        ("Real-Time 调度（POSIX 1..99）", "优先级 Rank 2，支持 FIFO 与时间片轮转（RR）抢占式调度", AMBER_ORG, AMBER_BG),
-        ("Fair 公平调度（Nice -20..19）", "支持 Normal / Batch / Idle 模式，承接管理服务与普通 vCPU 负载", BRAND_BLUE, ICE_FILL),
+        ("P1 · 截止期调度（Deadline）", "最高抢占级，按周期截止时间与预算严格保障电机等周期控制线程", ALERT_RED, RED_BG),
+        ("P2 · 实时抢占调度（FIFO / 轮转）", "次高抢占级，支持 1 至 99 级固定优先级，承载事件驱动实时线程", AMBER_ORG, AMBER_BG),
+        ("P3 · 公平分时调度（Fair）", "普通分时级，承载宿主管控服务与常规客户机虚拟处理器线程", BRAND_BLUE, ICE_FILL),
     ]
     for si, (st, sd, sc, sb) in enumerate(sched_rows):
         sy = 3.74 + si * 1.02
         add_rect(s11, 14.32, sy, 10.95, 0.88, fill=sb, border=sc, border_pt=1.2, rounded=True, radius=0.06)
-        add_textbox(s11, 14.48, sy + 0.04, 4.15, 0.80, st, size=19.5, color=sc, bold=True, valign=MSO_ANCHOR.MIDDLE)
-        add_textbox(s11, 18.68, sy + 0.04, 6.46, 0.80, sd, size=18.5, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE)
+        add_textbox(s11, 14.48, sy + 0.04, 4.25, 0.80, st, size=19.5, color=sc, bold=True, valign=MSO_ANCHOR.MIDDLE)
+        add_textbox(s11, 18.78, sy + 0.04, 6.36, 0.80, sd, size=18.5, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE)
 
-    add_card(s11, 14.04, 7.14, 11.51, 4.35, title="锁机制：对标 Linux PREEMPT_RT 的四级显式锁", accent=SAFE_GREEN, fill=WHITE, border=SAFE_BORDER, title_size=24, header_band=True)
+    add_card(s11, 14.04, 7.14, 11.51, 4.35, title="std 之下收敛的四级显式锁（消除优先级反转与关中断抖动）", accent=SAFE_GREEN, fill=WHITE, border=SAFE_BORDER, title_size=23.5, header_band=True)
     lock_rows = [
-        ("Mutex / RwSem（优先级继承）", "等待锁时，持锁任务可临时继承等待者的优先级"),
-        ("RtSpinLock / RtSpinRwLock", "竞争时允许睡眠并约束持锁迁移，避免关抢占拖长响应延迟"),
-        ("RawSpinLock（lock / irqsave）", "用于不可睡眠短临界区，禁抢占或保存并恢复局部中断状态"),
-        ("LocalLock + 内置 lockdep", "每核本地隔离，配合 lockdep 在运行期检测锁依赖环"),
+        ("优先级继承互斥锁", "高优先级控制线程等锁时，自动抬高持锁低优先级线程以尽快放锁"),
+        ("实时可睡眠自旋锁", "锁竞争时允许让出处理器且约束持锁迁移，避免长关抢占拖慢响应"),
+        ("短临界区关中断锁", "仅用于极短底层临界区，自动保存并在离开作用域时恢复中断状态"),
+        ("每核本地锁 + 死锁检测", "核内数据免跨核争抢，运行期自动检测锁依赖环路拦截死锁隐患"),
     ]
     for li, (lt, ld) in enumerate(lock_rows):
         ly = 8.02 + li * 0.84
         add_rect(s11, 14.32, ly, 10.95, 0.72, fill=LIGHT_GRAY if li % 2 else SAFE_BG, border=GRAY_BORDER, border_pt=1.0, rounded=True, radius=0.05)
-        add_textbox(s11, 14.48, ly + 0.04, 4.25, 0.64, lt, size=18.5, color=DARK_NAVY, bold=True, valign=MSO_ANCHOR.MIDDLE)
-        add_textbox(s11, 18.78, ly + 0.04, 6.36, 0.64, ld, size=18.5, color=BODY_TEXT, bold=False, valign=MSO_ANCHOR.MIDDLE)
+        add_textbox(s11, 14.48, ly + 0.04, 3.85, 0.64, lt, size=18.5, color=DARK_NAVY, bold=True, valign=MSO_ANCHOR.MIDDLE)
+        add_textbox(s11, 18.38, ly + 0.04, 6.76, 0.64, ld, size=18.5, color=BODY_TEXT, bold=False, valign=MSO_ANCHOR.MIDDLE)
 
     add_notes(
         s11,
-        "宿主即实时内核：实时调度与四级显式锁",
-        "04 实时内核",
-        1.7,
-        """网页晚一点响应，用户多等一会儿。电机控制晚一个周期，就可能错过发指令的时机。视觉识别可以在 Linux 客户机里跑，电机控制放在哪儿，才能按时拿到 CPU 和设备中断？
+        "省掉实时客户机：内核态安全直跑实时任务",
+        "03 安全隔离",
+        1.8,
+        """先看这项隔离设计带来的第一个显著变化：直接省掉独立的实时客户机。看左图上方，以往做混合关键性系统时，为了防止控制代码和复杂业务互相干扰，也因为传统监控器自己没有安全的业务运行环境，往往只能在 Linux 客户机旁边再单独起一台实时操作系统客户机。这样做有两重额外开销：一是要给这台实时客户机单独划分内存、维护独立固件；二是外设物理中断到达后，必须先陷入监控器、转换成虚拟中断注入进去，再等虚拟核调度上核才能响应。
 
-看左图，上方做法是让实时客户机来运行电机控制，由它接收设备中断、调度控制任务。下方则是 AxVisor 支持的混合部署方式：视觉应用继续在隔离的 Linux 客户机里运行，电机控制直接交给宿主。如果控制设备由宿主直接管理，宿主就能直接处理硬件中断，省掉向客户机转发这一步。
+再看左图下方 AxVisor 的做法。正因为标准库之上已经具备了应用级安全隔离，不再担心控制业务逻辑写坏宿主内核，我们就可以把电机控制这类实时应用直接写成安全 Rust 线程，放在宿主内核态运行。这样一来，整台实时客户机的内存和启动开销直接省掉了；控制外设由宿主直接管理时，物理硬件中断一到就直达宿主实时线程，连二阶段页表转换和虚拟中断转发的开销也一并归零，旁边的复杂 Linux 视觉业务依然关在硬件隔离的客户机沙箱里。
 
-右上角是 ArceOS 的调度器。像周期性的电机控制，可以用 Deadline 按截止时间和运行预算安排。需要固定优先级的任务用 RT，网页管理和普通 vCPU 可以用公平调度。
-
-排上 CPU 之后，任务也可能卡在锁上。比如控制任务要用的锁还在低优先级任务手里，右下角的优先级继承会临时提高持锁任务的优先级，让它尽快运行并释放锁。普通线程、中断处理和只访问本核数据的代码，各用适合的锁。控制任务和客户机的 vCPU 都由宿主调度。至于串口、网卡这些设备该归宿主还是客户机，还要把资源和访问权限划清楚。"""
+同时，右侧那些容易写错的底层实时调度和同步机制都已经收敛在标准库之下：右上角通过截止期调度、固定优先级抢占和公平分时三层策略，保证周期控制线程严格优先于普通管理线程；右下角通过优先级继承互斥锁和可睡眠实时锁消除优先级反转。上层控制代码不用碰关中断细节，就能拿到确定性的实时响应。除了省掉实时客户机，标准库隔离层还彻底改变了宿主机自身的业务开发方式。"""
     )
 
     # =========================================================================
-    # SLIDE 12: 安全边界——三级隔离与最小 unsafe 边界
+    # SLIDE 12: 03 安全隔离——复用 std crate 大幅简化业务开发
     # =========================================================================
     s12 = new_styled_slide(prs, stamps["gradient"])
     add_content_chrome(
-        s12, True, "05 声明式设备图", SAFE_GREEN,
-        "安全边界：硬件操作与上层逻辑",
-        "将页表、寄存器和硬件切换操作封装在底层接口，上层组件通过接口访问资源",
-        12, "审计边界",
-        "集中检查硬件访问所用的地址、长度与权限，并在上层校验配置和设备请求。"
+        s12, True, "03 安全隔离", BRAND_BLUE,
+        "简化业务开发：内核态直接复用成熟 std crate 生态",
+        "底层调度、锁与网络协议收敛在 std 之下，上层直接引入应用层开源库快速构建复杂管控业务",
+        12, "研发提效",
+        "告别裸机 no_std 从零手写协议与状态机，在内核态以普通应用开发体验交付板载网页管理台与多路终端。"
     )
-    add_card(s12, 1.12, 2.84, 12.60, 8.65, title="AxVisor 安全边界分层", accent=DARK_NAVY, fill=WHITE, border=BORDER_BLU, title_size=26, header_band=True)
-
-    add_rect(s12, 1.44, 3.80, 11.96, 2.15, fill=SAFE_BG, border=SAFE_GREEN, border_pt=2.0, rounded=True, radius=0.06)
-    add_rect(s12, 1.66, 4.02, 3.60, 1.71, fill=SAFE_GREEN, border=None, rounded=True, radius=0.08)
-    add_textbox(s12, 1.72, 4.06, 3.48, 1.63, "第三层\n宿主服务\n（内核态 ax-std）", size=22, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
-    add_textbox(
-        s12, 5.46, 3.96, 7.72, 1.84,
-        "• Web 控制面（Axum / Tokio）、Shell、配置池、ConsoleMux\n"
-        "• 宿主业务基于 Safe Rust 与标准库 std::sync 编写\n"
-        "• 不直接触碰硬件寄存器或裸页表指针",
-        size=21, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.24
-    )
-
-    add_rect(s12, 1.44, 6.20, 11.96, 2.25, fill=ICE_FILL, border=BRAND_BLUE, border_pt=2.0, rounded=True, radius=0.06)
-    add_rect(s12, 1.66, 6.42, 3.60, 1.81, fill=BRAND_BLUE, border=None, rounded=True, radius=0.08)
-    add_textbox(s12, 1.72, 6.46, 3.48, 1.73, "第二层\n内核组件\n（虚拟化与驱动）", size=22, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
-    add_textbox(
-        s12, 5.46, 6.34, 7.72, 1.98,
-        "• ax-runtime、ax-task 实时调度与锁，81 个跨内核驱动\n"
-        "• axdevice 设备图与运行时、VirtIO 设备、vGIC / vPLIC\n"
-        "• 由借用检查器与强类型物理/虚拟地址类型约束边界",
-        size=21, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.24
-    )
-
-    add_rect(s12, 1.44, 8.60, 11.96, 0.44, fill=ALERT_RED, border=None, rounded=True, radius=0.25)
-    add_textbox(
-        s12, 1.54, 8.60, 11.76, 0.44,
-        "▲  上层使用类型化接口   |   ▼  底层封装硬件访问",
-        size=20, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE
-    )
-
-    add_rect(s12, 1.44, 9.18, 11.96, 2.02, fill=RED_BG, border=ALERT_RED, border_pt=2.0, rounded=True, radius=0.06)
-    add_rect(s12, 1.66, 9.38, 3.60, 1.62, fill=ALERT_RED, border=None, rounded=True, radius=0.08)
-    add_textbox(s12, 1.72, 9.42, 3.48, 1.54, "第一层\n硬件访问层", size=22, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
-    add_textbox(
-        s12, 5.46, 9.32, 7.72, 1.74,
-        "• axcpu / someboot：汇编上下文切换与硬件虚拟化陷入\n"
-        "• mmio-api / dma-api / axaddrspace：寄存器与二阶段页表\n"
-        "• 集中检查硬件访问与接口约定",
-        size=21, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.24
-    )
-
-    add_card(s12, 14.04, 2.84, 11.51, 8.65, title="虚拟化实现包的 src 源码统计", accent=SAFE_GREEN, fill=WHITE, border=SAFE_BORDER, title_size=26, header_band=True)
-
-    add_rect(s12, 14.34, 3.78, 10.91, 1.48, fill=SAFE_BG, border=SAFE_GREEN, border_pt=1.8, rounded=True, radius=0.06)
-    add_textbox(s12, 14.54, 3.86, 4.10, 1.32, "9 / 16", size=60, color=SAFE_GREEN, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
-    add_textbox(
-        s12, 18.70, 3.90, 6.35, 1.24,
-        "16 个虚拟化实现包中，9 个\n在 src 源码里使用 0 处 unsafe",
-        size=24, color=DARK_NAVY, bold=True, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.24
-    )
-
-    audit_rows = [
-        ("axdevice + axdevice_base\n(设备图 / 运行期 / 授权)", "27,636 行", "0 处 unsafe", "设备模拟与授权", SAFE_GREEN),
-        ("aarch64_sysreg\n(ARM64 虚拟系统寄存器)", "12,735 行", "0 处 unsafe", "寄存器解码", SAFE_GREEN),
-        ("axvirtio-common / blk / net\n(VirtIO 块与网络协议)", "12,646 行", "0 处 unsafe", "队列与协议解析", SAFE_GREEN),
-        ("axvmconfig / axvm-types\n+ riscv_vplic", "2,792 行", "0 处 unsafe", "配置与虚拟中断", SAFE_GREEN),
-        ("axvm / axaddrspace / riscv-h 等\n(7 个含 unsafe 的实现包)", "底层接口", "含 unsafe", "包括页表和进出客户机", ALERT_RED),
+    service_steps = [
+        ("1. 收敛底层机制", "调度、同步锁、文件系统\n与网络栈封装在底层模块", SLATE_DARK),
+        ("2. 标准库安全边界", "ax-std 提供标准系统接口\n内核态函数直调零切换损耗", SAFE_GREEN),
+        ("3. 引入成熟 std crate", "直接编译运行 Tokio、Axum\n与 Serde 等应用层开源库", BRAND_BLUE),
+        ("4. 极简交付复杂业务", "少量安全代码实现板载网页\n管理台与多路远程串口终端", PURPLE),
     ]
-    for ai, (aname, aloc, abadge, adesc, acol) in enumerate(audit_rows):
-        ay = 5.44 + ai * 1.16
-        add_rect(s12, 14.34, ay, 10.91, 1.02, fill=LIGHT_GRAY if ai < 4 else RED_BG, border=GRAY_BORDER if ai < 4 else RED_BORDER, border_pt=1.0, rounded=True, radius=0.05)
-        add_textbox(s12, 14.52, ay + 0.06, 4.55, 0.90, aname, size=20, color=DARK_NAVY, bold=True, valign=MSO_ANCHOR.MIDDLE)
-        add_textbox(s12, 19.05, ay + 0.12, 1.65, 0.78, aloc, size=20, color=MUTED_TEXT, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
-        add_rect(s12, 20.80, ay + 0.22, 2.05, 0.56, fill=acol, border=None, rounded=True, radius=0.16)
-        add_textbox(s12, 20.80, ay + 0.22, 2.05, 0.56, abadge, size=20, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
-        add_textbox(s12, 22.95, ay + 0.08, 2.22, 0.86, adesc, size=18, color=BODY_TEXT, bold=False, valign=MSO_ANCHOR.MIDDLE)
+    for index, (label, description, color) in enumerate(service_steps):
+        x = 1.12 + index * 6.29
+        add_card(s12, x, 2.80, 5.56, 1.88, title=label, accent=color, fill=WHITE, border=color, title_size=22, header_band=True, header_band_h=0.58)
+        add_textbox(s12, x + 0.16, 3.44, 5.24, 1.14, description, size=19.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.18)
+        if index < len(service_steps) - 1:
+            arrow_dir = "lr" if index == 2 else "right"
+            add_arrow(s12, x + 5.66, 3.54, 0.52, 0.44, arrow_dir, color)
+
+    screenshots = [
+        (1.12, media["web_ui"], "实机网页管理台：基于 Axum + Tokio 构建，直观查看与启停各台客户机", BRAND_BLUE),
+        (13.68, media["web_term"], "浏览器多路终端：基于 WebSocket 生态库直连宿主与多台客户机串口", SAFE_GREEN),
+    ]
+    for x, blob, caption, color in screenshots:
+        add_rect(s12, x, 4.86, 11.87, 6.68, fill=WHITE, border=color, border_pt=1.6, rounded=True, radius=0.03)
+        add_picture_fit(s12, blob, x + 0.14, 4.95, 11.59, 5.75, frame_border=None, pad=0.04)
+        add_textbox(s12, x + 0.12, 10.80, 11.63, 0.62, caption, size=20, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
 
     add_notes(
         s12,
-        "安全边界：硬件操作与上层逻辑",
-        "05 声明式设备图",
-        1.1,
-        """客户机一旦开始访问外设，就会碰到宿主的权限边界。比如客户机往虚拟串口写一个字节，CPU 把控制权交回宿主。底层负责切换寄存器和执行上下文，上层负责找到串口、判断这次访问允许做什么。
+        "简化业务开发：内核态直接复用成熟 std crate 生态",
+        "03 安全隔离",
+        1.6,
+        """第二个直接收益，是用标准库开源生态大幅简化宿主侧的业务开发。传统裸机虚拟机监控器在内核态只有最基础的无标准库环境，开源社区里绝大多数成熟的网络框架、异步运行时和配置解析库全都依赖操作系统标准库，在裸机里根本用不了；想加一套动态管理接口或远程调试通道，只能从底层字节流和状态机手写，既费工又容易引入新的内存安全问题。
 
-左图从下往上看。寄存器操作和地址转换封装在底层硬件接口，虚拟化组件通过接口管理资源，网页和命令行再通过管理接口操作客户机。右边是这版源码的统计，设备图、VirtIO 队列和配置校验等 9 个实现包的 src 里没有 unsafe。
+上方这条链路展示了打通标准库隔离层前后的对比：底层的线程调度、同步锁、文件系统和网络协议栈统一收敛在标准库接口之下，向上提供完整的标准库环境。开发者在宿主内核里写业务，体验和在普通电脑上写应用完全一样，可以直接引入社区成熟的 Tokio 异步运行时、Axum 网页框架和配置序列化库，全程只写安全 Rust 业务逻辑。
 
-设备能访问哪些地址，在处理请求之前就得定好。就拿这个虚拟串口来说，给宿主和客户机的地址要对得上。"""
+下方两张实机浏览器截图就是最直观的例子：不需要在板卡上挂一个重型 Linux 宿主机，裸机运行的 AxVisor 靠几百行上层安全业务代码，就提供了完整的网页虚拟机管理台和浏览器多路串口终端，插一根网线就能随时查看资源占用、动态启停客户机并同时交互调试多套系统。宿主机内部自有的实时与管控业务靠标准库隔离开之后，面对外部客户机的虚拟设备配置与内存访问，又该怎么把边界管清楚？"""
     )
 
     # =========================================================================
-    # SLIDE 13: 设备规划与授权
+    # SLIDE 13: 04 声明式设备图——同源双生分叉拓扑图
     # =========================================================================
     s13 = new_styled_slide(prs, stamps["white"])
     add_content_chrome(
-        s13, False, "05 声明式设备图", PURPLE,
-        "声明式设备图：地址怎么分，权限怎么给",
-        "设备图统一分配地址和中断号，设备在运行时按请求获得访问权限",
+        s13, False, "04 声明式设备图", PURPLE,
+        "声明式设备图：同源双生配置与按次最小授权",
+        "一份设备声明经过冲突检查后，同时生成宿主路由表与客户机固件描述，运行期按请求临时借用内存",
         13, "设备边界",
-        "客户机和宿主使用同一份资源分配结果，设备按次访问获准的资源。"
+        "消除手工同步宿主与客户机地址的错位隐患，虚拟设备在回调窗口外不持有客户机全量内存。"
     )
-    device_steps = [
-        ("为客户机分配设备", "配置声明虚拟串口、磁盘等设备。设备规划器分配地址和中断号，并检查资源冲突。", "设备配置\n↓\nResolvedDeviceGraph", BRAND_BLUE, ICE_FILL, BORDER_BLU),
-        ("一份设备图，两种输出", "宿主按地址查模拟设备。客户机从设备树或 ACPI 表读取地址和中断号。", "一份设备图\n↓\n宿主路由表 + 客户机固件", PURPLE, PURP_BG, PURP_BORDER),
-        ("按请求给设备权限", "虚拟磁盘写回数据时，只能在回调期间按已登记的权限借用客户机内存。", "设备请求\n↓\nGrant 与临时访问入口", SAFE_GREEN, SAFE_BG, SAFE_BORDER),
-    ]
-    for index, (label, description, flow, color, fill, border) in enumerate(device_steps):
-        x = 1.12 + index * 8.28
-        add_card(s13, x, 2.84, 7.86, 6.29, title=label, accent=color, fill=WHITE, border=border, title_size=25, header_band=True)
-        add_textbox(s13, x + 0.29, 3.86, 7.28, 1.94, description, size=23, color=BODY_TEXT, line_spacing=1.2)
-        add_rect(s13, x + 0.29, 6.02, 7.28, 2.76, fill=fill, border=border, border_pt=1.1)
-        add_textbox(s13, x + 0.43, 6.30, 7.00, 2.20, flow, size=23, color=color, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    # Stage 1 (Left): Config -> Planner -> Single Resolved Graph
+    add_card(s13, 1.12, 2.84, 6.76, 6.32, title="1. 声明需求与冲突检查", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=24, header_band=True)
+    add_rect(s13, 1.38, 3.76, 6.24, 1.72, fill=LIGHT_GRAY, border=GRAY_BORDER, border_pt=1.2)
+    add_textbox(s13, 1.54, 3.84, 5.92, 0.42, "客户机外置配置文件", size=21, color=DARK_NAVY, bold=True)
+    add_textbox(s13, 1.54, 4.30, 5.92, 1.08, "只声明需要哪些虚拟串口、磁盘或网卡，无需人工计算与硬编码地址", size=19, color=BODY_TEXT, valign=MSO_ANCHOR.MIDDLE)
+    add_arrow(s13, 4.28, 5.56, 0.44, 0.36, "down", BRAND_BLUE)
+    add_rect(s13, 1.38, 6.00, 6.24, 2.88, fill=ICE_FILL, border=BRAND_BLUE, border_pt=1.8)
+    add_textbox(s13, 1.54, 6.10, 5.92, 0.44, "设备规划器 → 唯一已解析设备图", size=21, color=BRAND_BLUE, bold=True)
+    add_textbox(s13, 1.54, 6.60, 5.92, 2.14, "• 自动分配寄存器地址段与中断号\n• 启动前静态拦截地址重叠与资源冲突\n• 固化为唯一权威的数据源", size=19.5, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.24)
 
-    add_rect(s13, 1.12, 9.41, 24.43, 1.97, fill=ICE_FILL, border=BORDER_BLU, border_pt=1.2)
-    add_textbox(s13, 1.43, 9.52, 23.81, 0.43, "需要直通或协作时", size=23, color=BRAND_BLUE, bold=True)
-    add_textbox(s13, 1.43, 10.05, 23.81, 1.02, "设备中断可直通给客户机。客户机之间也可以通过共享内存交换数据，再通知对方读取。", size=22, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE)
+    # 1-to-2 Visual Fork Arrows into Center Stage!
+    add_arrow(s13, 8.00, 4.70, 0.84, 0.50, "right", PURPLE)
+    add_arrow(s13, 8.00, 7.36, 0.84, 0.50, "right", BRAND_BLUE)
+
+    # Stage 2 (Center): True 1-to-2 Fork (Host Dispatch Table + Guest FDT/ACPI)
+    add_card(s13, 8.96, 2.84, 8.12, 6.32, title="2. 一份设备图，同源双生输出", accent=PURPLE, fill=WHITE, border=PURP_BORDER, title_size=24, header_band=True)
+    add_rect(s13, 9.24, 3.76, 7.56, 2.38, fill=PURP_BG, border=PURPLE, border_pt=1.8)
+    add_textbox(s13, 9.44, 3.86, 7.16, 0.46, "对内输出：宿主模拟设备路由表", size=21.5, color=PURPLE, bold=True)
+    add_textbox(s13, 9.44, 4.38, 7.16, 1.62, "客户机访问某段设备地址触发拦截时，宿主按这张路由表精准分发给对应的虚拟设备实例", size=19.5, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.2)
+
+    add_rect(s13, 9.24, 6.46, 7.56, 2.42, fill=ICE_FILL, border=BRAND_BLUE, border_pt=1.8)
+    add_textbox(s13, 9.44, 6.56, 7.16, 0.46, "对外输出：客户机设备树 / ACPI 固件表", size=21.5, color=BRAND_BLUE, bold=True)
+    add_textbox(s13, 9.44, 7.08, 7.16, 1.66, "由同一份分配结果自动生成硬件描述表交给客户机内核，从根源上杜绝两边地址或中断号对不上", size=19.5, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.2)
+
+    # Arrow into Stage 3 (Runtime Scoped Grant)
+    add_arrow(s13, 17.20, 5.76, 0.68, 0.50, "right", SAFE_GREEN)
+
+    # Stage 3 (Right): Per-Request Scoped Memory Grant Lifecycle
+    add_card(s13, 18.00, 2.84, 7.55, 6.32, title="3. 运行期按次最小授权", accent=SAFE_GREEN, fill=WHITE, border=SAFE_BORDER, title_size=24, header_band=True)
+    add_rect(s13, 18.28, 3.76, 6.99, 1.32, fill=LIGHT_GRAY, border=GRAY_BORDER, border_pt=1.2)
+    add_textbox(s13, 18.44, 3.84, 6.67, 1.16, "虚拟磁盘或网卡收到单次读写请求\n不预先持有整台客户机的内存引用", size=19, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_arrow(s13, 21.56, 5.14, 0.42, 0.30, "down", SAFE_GREEN)
+    add_rect(s13, 18.28, 5.50, 6.99, 1.72, fill=SAFE_BG, border=SAFE_GREEN, border_pt=1.8)
+    add_textbox(s13, 18.44, 5.58, 6.67, 1.56, "按已登记授权区间签发临时访问句柄\n仅在本次回调窗口内借用目标内存段", size=19.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.2)
+    add_arrow(s13, 21.56, 7.28, 0.42, 0.30, "down", ALERT_RED)
+    add_rect(s13, 18.28, 7.64, 6.99, 1.24, fill=RED_BG, border=ALERT_RED, border_pt=1.5)
+    add_textbox(s13, 18.44, 7.70, 6.67, 1.12, "回调结束自动收回句柄，杜绝悬垂越界访问", size=19.5, color=ALERT_RED, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+
+    # Bottom Bar: Passthrough & IVC Collaboration
+    add_rect(s13, 1.12, 9.38, 24.43, 2.02, fill=ICE_FILL, border=BORDER_BLU, border_pt=1.4, rounded=True, radius=0.05)
+    add_rect(s13, 1.40, 9.58, 11.78, 1.62, fill=WHITE, border=AMBER_ORG, border_pt=1.4, rounded=True, radius=0.05)
+    add_textbox(s13, 1.62, 9.66, 11.34, 0.42, "物理硬件直通延伸", size=20.5, color=AMBER_ORG, bold=True)
+    add_textbox(s13, 1.62, 10.12, 11.34, 0.98, "设备图同样管理真实外设直通，将物理寄存器区间与硬件中断独占映射给目标客户机。", size=19, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE)
+
+    add_rect(s13, 13.48, 9.58, 11.78, 1.62, fill=WHITE, border=SAFE_GREEN, border_pt=1.4, rounded=True, radius=0.05)
+    add_textbox(s13, 13.70, 9.66, 11.34, 0.42, "跨客户机高速协作", size=20.5, color=SAFE_GREEN, bold=True)
+    add_textbox(s13, 13.70, 10.12, 11.34, 0.98, "按配置建立受控共享内存页与核间门铃中断，让视觉客户机与实时控制端零拷贝交换结果。", size=19, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE)
 
     add_notes(
         s13,
-        "声明式设备图：地址怎么分，权限怎么给",
-        "05 声明式设备图",
-        1.6,
-        """给 Linux 客户机加一个虚拟串口，Linux 启动时要从设备树或 ACPI 表拿到地址和中断号。要是宿主改了地址，客户机拿到的清单却没改，串口就可能找不到。
+        "声明式设备图：同源双生配置与按次最小授权",
+        "04 声明式设备图",
+        1.7,
+        """手工配置嵌入式虚拟机时有一个非常高频的踩坑点：给 Linux 客户机加一个虚拟串口或虚拟磁盘，宿主机这边配置了一段寄存器地址和中断号，客户机的设备树或固件表里还得手动再抄一遍；只要有一边改了地址忘了同步，客户机启动后就会找不到设备或者发错中断。
 
-看左边和中间。配置里声明需要哪些设备，AxVisor 统一分配地址和中断号并检查资源冲突，再用同一份设备图生成宿主查找模拟设备所用的路由表，以及客户机的固件描述。Linux 往这个地址写入数据时，宿主就能把请求准确分发给对应的虚拟串口。
+看图里从左到中间的同源分叉流程。在 AxVisor 里，配置文件只声明客户机需要什么设备，不手填具体地址。启动准备阶段，左边的设备规划器统一分配地址段和中断号，静态检查有没有资源重叠，生成唯一一份已解析设备图。接着由这一份设备图同时分出两路输出：一路对内生成宿主机的模拟设备路由表，客户机访问该地址时宿主机按表精准派发；另一路对外自动生成客户机启动读取的设备树或固件描述表。两边出自同一个数据源，天然不会错位。
 
-右边是运行时的权限。比如虚拟磁盘要把读到的数据写回客户机内存，AxVisor 按这次请求借给它一个入口，回调结束就收回来。需要客户机直接接收设备中断时，可以走中断直通。机器人里的视觉和控制系统要交换结果，也可以用共享内存加通知。到了实机上，除了虚拟设备，还要安排摄像头、串口和管理网卡这些物理设备。"""
+再看最右边的运行期内存权限控制。虚拟磁盘要把读出的数据写回客户机内存时，我们不允许虚拟设备长期持有整台客户机的内存引用，而是按单次请求和事先登记的授权范围，在回调窗口内临时借出一个受限访问入口，回调一返回立刻收回。底下两格则把同一套设备图延伸到了真实外设直通与跨客户机共享内存通道。这套架构落到真实的八核嵌入式开发板上表现如何？我们直接看两套实机部署案例。"""
     )
 
     # =========================================================================
@@ -1198,91 +1347,96 @@ Type-1 是指虚拟机管理器直接跑在硬件上，不像 KVM 运行虚拟�
     # =========================================================================
     s14 = new_styled_slide(prs, stamps["white"])
     add_content_chrome(
-        s14, False, "06 实机与验证", AMBER_ORG,
-        "实机部署：RK3588 多客户机混合运行案例",
-        "基于 Orange Pi 5 Plus (RK3588) 的两套实机部署验证：大小核设备直通双系统与全虚拟化三系统",
+        s14, False, "05 实机与验证", AMBER_ORG,
+        "实机部署：RK3588 大小核直通与多系统全虚拟化",
+        "基于 Orange Pi 5 Plus (RK3588) 的两套实板拓扑：异构双客户机外设直通与单芯三客户机全虚拟化",
         14, "实机部署",
-        "大核承载视觉与 AI 推理，小核承载实时底盘控制，宿主管理物理网络与多路终端，按硬件边界隔离外设。"
+        "按硬件依赖边界划分外设归属，兼顾大小核直通低时延协作与多客户机虚拟网络存储共享。"
     )
-    add_card(s14, 1.12, 2.84, 11.95, 6.72, title="案例一：大小核设备直通双客户机（dual-linux-zephyr / dual-starry-zephyr）", accent=AMBER_ORG, fill=WHITE, border=AMBER_BORDER, title_size=22.5, header_band=True)
-    add_textbox(s14, 1.38, 3.64, 11.43, 0.42, "目标板卡：Orange Pi 5 Plus (RK3588)，大核负责视觉感知，小核负责实时底盘控制", size=20, color=AMBER_ORG, bold=True)
+    add_card(s14, 1.12, 2.84, 11.95, 6.72, title="案例一：大小核设备直通双客户机（dual-linux-zephyr / dual-starry-zephyr）", accent=AMBER_ORG, fill=WHITE, border=AMBER_BORDER, title_size=22, header_band=True)
+    add_textbox(s14, 1.38, 3.60, 11.43, 0.40, "Orange Pi 5 Plus (RK3588)：大核独占视觉算力外设，小核独占控制串口，宿主守护共享链路", size=19, color=AMBER_ORG, bold=True)
 
-    add_rect(s14, 1.38, 4.18, 5.10, 2.66, fill=ICE_FILL, border=BRAND_BLUE, border_pt=1.6, rounded=True, radius=0.06)
-    add_textbox(s14, 1.54, 4.26, 4.78, 0.46, "A76 大核 · Linux / StarryOS", size=21, color=BRAND_BLUE, bold=True, align=PP_ALIGN.CENTER)
+    add_rect(s14, 1.38, 4.08, 5.06, 2.52, fill=ICE_FILL, border=BRAND_BLUE, border_pt=1.8, rounded=True, radius=0.06)
+    add_textbox(s14, 1.46, 4.14, 4.90, 0.48, "感知域 · A76 大核 (Linux/StarryOS)", size=18, color=BRAND_BLUE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
     add_textbox(
-        s14, 1.52, 4.76, 4.82, 1.98,
-        "• 直通 USB3 摄像头（/usbdrd3_1）\n"
-        "• 调用 RKNPU 运行视觉推理\n"
-        "• 剔除宿主 PCIe PHY 与 USB0\n"
-        "  避免误复位宿主管理网卡",
+        s14, 1.52, 4.64, 4.78, 1.86,
+        "• 直通 USB3 摄像头与 RKNPU 推理\n"
+        "• 从客户机设备树剔除共享 PCIe PHY\n"
+        "  防止客户机复位冲掉宿主管理网卡",
         size=18.5, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.18
     )
 
-    add_arrow(s14, 6.62, 5.16, 0.96, 0.56, "lr", SAFE_GREEN)
-    add_textbox(s14, 6.42, 5.76, 1.36, 0.72, "robot-ivc\n共享通道", size=18, color=SAFE_GREEN, bold=True, align=PP_ALIGN.CENTER)
+    # Hardware isolation wall + IVC bridge across wall
+    add_rect(s14, 6.96, 4.06, 0.16, 2.56, fill=ALERT_RED, border=None, rounded=False)
+    add_arrow(s14, 6.54, 4.86, 1.00, 0.50, "lr", SAFE_GREEN)
+    add_rect(s14, 6.42, 5.44, 1.24, 0.96, fill=SAFE_BG, border=SAFE_GREEN, border_pt=1.2, rounded=True, radius=0.08)
+    add_textbox(s14, 6.44, 5.46, 1.20, 0.92, "robot-ivc\n共享内存", size=16, color=SAFE_GREEN, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.12)
 
-    add_rect(s14, 7.72, 4.18, 5.08, 2.66, fill=SAFE_BG, border=SAFE_GREEN, border_pt=1.6, rounded=True, radius=0.06)
-    add_textbox(s14, 7.88, 4.26, 4.76, 0.46, "A55 小核 · Zephyr 实时控制", size=21, color=SAFE_GREEN, bold=True, align=PP_ALIGN.CENTER)
+    add_rect(s14, 7.68, 4.08, 5.12, 2.52, fill=SAFE_BG, border=SAFE_GREEN, border_pt=1.8, rounded=True, radius=0.06)
+    add_textbox(s14, 7.76, 4.14, 4.96, 0.48, "控制域 · A55 小核 (Zephyr 实时)", size=18, color=SAFE_GREEN, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
     add_textbox(
-        s14, 7.86, 4.76, 4.80, 1.98,
-        "• 独占物理 UART6 (/serial@feb90000)\n"
-        "• 驱动底盘、机械臂与看门狗\n"
-        "• 与 Linux 视觉系统硬件隔离，\n"
-        "  外设所有权边界清晰",
+        s14, 7.82, 4.64, 4.84, 1.86,
+        "• 独占物理串口 UART6 (/serial@feb90000)\n"
+        "• 驱动底盘、机械臂与看门狗回路\n"
+        "• 与大核视觉系统严格硬件故障隔离",
         size=18.5, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.18
     )
 
-    add_rect(s14, 1.38, 7.00, 11.42, 2.30, fill=DARK_NAVY, border=None, rounded=True, radius=0.06)
+    add_arrow(s14, 3.70, 6.66, 0.36, 0.30, "down", DARK_NAVY)
+    add_arrow(s14, 10.06, 6.66, 0.36, 0.30, "down", DARK_NAVY)
+
+    add_rect(s14, 1.38, 7.02, 11.42, 2.28, fill=DARK_NAVY, border=None, rounded=True, radius=0.06)
     add_textbox(
-        s14, 1.58, 7.08, 11.02, 2.14,
-        "AxVisor 宿主（持有共享硬件与管控通道）\n"
-        "• 保留物理管理串口与 RTL8125 物理网卡（经 PCIe 接入管理网络）\n"
-        "• 对外输出三路独立 WebSocket 终端：同时观察 AxVisor + Linux + Zephyr",
-        size=20, color=WHITE, bold=True, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.26
+        s14, 1.58, 7.10, 11.02, 2.12,
+        "AxVisor 宿主内核（独占共享基础设施与多路远程运维）\n"
+        "• 持有物理管理串口、PCIe PHY 与 RTL8125 物理网卡，保障远程管控链路不断线\n"
+        "• 对外输出三路独立 WebSocket 终端，同一浏览器同时观测宿主、Linux 与 Zephyr",
+        size=19.5, color=WHITE, bold=True, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.24
     )
 
-    add_card(s14, 13.60, 2.84, 11.95, 6.72, title="案例二：单芯三客户机全虚拟化（triple-guest-functional）", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=22.5, header_band=True)
-    add_textbox(s14, 13.86, 3.64, 11.43, 0.42, "目标板卡：Orange Pi 5 Plus (RK3588)，同时启动三个全虚拟化 Guest（无外设直通）", size=20, color=BRAND_BLUE, bold=True)
+    add_card(s14, 13.60, 2.84, 11.95, 6.72, title="案例二：单芯三客户机全虚拟化（triple-guest-functional）", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=22, header_band=True)
+    add_textbox(s14, 13.86, 3.60, 11.43, 0.40, "同一块 RK3588 板卡并发运行三套异构客户机，共享单一物理网卡与板载存储", size=19, color=BRAND_BLUE, bold=True)
 
     guests3 = [
-        ("Guest 1：Linux 6.1.99", "virtio-blk 独立根盘\nvirtio-net 接入交换机\n完成离线 apt-get 安装", SAFE_GREEN, SAFE_BG),
-        ("Guest 2：StarryOS", "本仓构建 Rust 宏内核\n独立 ext4 根盘 + virtio-net\n同样通过 apt-get 校验", BRAND_BLUE, ICE_FILL),
-        ("Guest 3：Zephyr", "合成 vGIC + 虚拟串口\n独立 Shell 交互校验\n三客户机并发在线", PURPLE, PURP_BG),
+        ("客户机 1：Linux 6.1.99", "独立虚拟块设备根盘\n虚拟网卡接入内建交换机\n完成离线软件包安装校验", SAFE_GREEN, SAFE_BG),
+        ("客户机 2：StarryOS", "本工作区构建宏内核\n独立 ext4 根盘 + 虚拟网卡\n同样通过软件包安装校验", BRAND_BLUE, ICE_FILL),
+        ("客户机 3：Zephyr", "合成虚拟中断控制器\n独立虚拟串口交互终端\n三台客户机并发在线运行", PURPLE, PURP_BG),
     ]
     for gi, (gt, gd, gc, gb) in enumerate(guests3):
         gx = 13.86 + gi * 3.84
-        add_rect(s14, gx, 4.18, 3.66, 2.66, fill=gb, border=gc, border_pt=1.6, rounded=True, radius=0.06)
-        add_rect(s14, gx + 0.12, 4.30, 3.42, 0.54, fill=gc, border=None, rounded=True, radius=0.10)
-        add_textbox(s14, gx + 0.16, 4.30, 3.34, 0.54, gt, size=19, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
-        add_textbox(s14, gx + 0.14, 4.96, 3.38, 1.76, gd, size=19, color=DARK_NAVY, bold=False, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.20)
+        add_rect(s14, gx, 4.08, 3.66, 2.52, fill=gb, border=gc, border_pt=1.6, rounded=True, radius=0.06)
+        add_rect(s14, gx + 0.12, 4.18, 3.42, 0.50, fill=gc, border=None, rounded=True, radius=0.10)
+        add_textbox(s14, gx + 0.16, 4.18, 3.34, 0.50, gt, size=18.5, color=WHITE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+        add_textbox(s14, gx + 0.14, 4.78, 3.38, 1.70, gd, size=18.5, color=DARK_NAVY, bold=False, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.18)
+        add_arrow(s14, gx + 1.65, 6.64, 0.36, 0.34, "ud", gc)
 
-    add_rect(s14, 13.86, 7.00, 11.42, 2.30, fill=ICE_FILL, border=BRAND_BLUE, border_pt=1.8, rounded=True, radius=0.06)
+    add_rect(s14, 13.86, 7.02, 11.42, 2.28, fill=ICE_FILL, border=BRAND_BLUE, border_pt=1.8, rounded=True, radius=0.06)
     add_textbox(
-        s14, 14.06, 7.08, 11.02, 2.14,
-        "AxVisor 宿主内建二层虚拟交换机 + 统一存储/网络归属\n"
-        "• 宿主独占 eMMC 根文件系统与物理 RTL8125 网卡\n"
-        "• Linux 与 StarryOS 的 virtio-net 经宿主二层交换机统一接入局域网并互通",
-        size=20, color=DARK_NAVY, bold=True, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.26
+        s14, 14.06, 7.10, 11.02, 2.12,
+        "AxVisor 宿主内建二层虚拟交换机 + 统一存储与终端复用\n"
+        "• 宿主独占板载 eMMC 文件系统与单块 RTL8125 物理网卡\n"
+        "• Linux 与 StarryOS 的虚拟网卡经宿主内建二层交换机互通并接入外部局域网",
+        size=19.5, color=DARK_NAVY, bold=True, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.24
     )
 
     add_rect(s14, 1.12, 9.76, 12.10, 1.72, fill=AMBER_BG, border=AMBER_BORDER, border_pt=1.4, rounded=True, radius=0.06)
-    add_textbox(s14, 1.34, 9.84, 11.66, 0.44, "已覆盖 7 款实体板卡/主机 + 4 架构 QEMU（configs/board/）", size=21, color=AMBER_ORG, bold=True)
-    add_textbox(s14, 1.34, 10.30, 11.66, 1.08, "Orange Pi 5 Plus (RK3588) · 飞腾派 (E2000) · ROC-RK3568-PC · RDK-S100 · Rock 4D · TAC-E400 · ASUS NUC15CRH (x86_64)", size=20, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.22)
+    add_textbox(s14, 1.34, 9.84, 11.66, 0.44, "已覆盖 7 款实体板卡/主机 + 4 架构模拟器（configs/board/）", size=21, color=AMBER_ORG, bold=True)
+    add_textbox(s14, 1.34, 10.30, 11.66, 1.08, "Orange Pi 5 Plus (RK3588) · 飞腾派 (E2000) · ROC-RK3568-PC · RDK-S100 · Rock 4D · TAC-E400 · ASUS NUC15CRH (x86_64)", size=19.5, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.22)
 
     add_rect(s14, 13.45, 9.76, 12.10, 1.72, fill=SAFE_BG, border=SAFE_BORDER, border_pt=1.4, rounded=True, radius=0.06)
-    add_textbox(s14, 13.67, 9.84, 11.66, 0.44, "已适配 6 种客户机系统 · 共 62 份 VM 配置（configs/vms/）", size=21, color=SAFE_GREEN, bold=True)
-    add_textbox(s14, 13.67, 10.30, 11.66, 1.08, "Linux · ArceOS · StarryOS · Zephyr · FreeRTOS · RT-Thread\n支持单核 / SMP 多核 · 全虚拟化与设备直通混合配置", size=20, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.22)
+    add_textbox(s14, 13.67, 9.84, 11.66, 0.44, "已适配 6 种客户机系统 · 共 62 份客户机配置（configs/vms/）", size=21, color=SAFE_GREEN, bold=True)
+    add_textbox(s14, 13.67, 10.30, 11.66, 1.08, "Linux · ArceOS · StarryOS · Zephyr · FreeRTOS · RT-Thread\n支持单核与对称多核 · 全虚拟化与物理外设直通灵活组合", size=19.5, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.22)
 
     add_notes(
         s14,
-        "实机部署：RK3588 多客户机混合运行案例",
-        "06 实机与验证",
-        1.6,
-        """把视觉和控制装到同一块 Orange Pi 5 Plus 上，摄像头要给视觉系统，控制串口要给实时系统，管理网卡还得留给宿主。设备之间有共享的硬件依赖，分配时得一起看。
+        "实机部署：RK3588 大小核直通与多系统全虚拟化",
+        "05 实机与验证",
+        1.7,
+        """真正把多套系统部署到一块像 RK3588 这样的八核嵌入式开发板上，外设分配往往比想象中棘手，因为片上外设之间常有共享的底层时钟和物理层依赖，不能孤立地切分地址。
 
-左图里，Linux 或 StarryOS 客户机用摄像头和 NPU 做感知，再通过共享内存把结果发给 Zephyr。Zephyr 独占一个串口，用它给底盘和机械臂发指令。管理网卡依赖的 PCIe PHY 如果也暴露给客户机，客户机重置它时，宿主网页就可能断线。所以配置把管理网卡和它依赖的那部分硬件都留给宿主。
+看左边第一套机器人实机拓扑。我们把四颗大核划给 Linux 或 StarryOS 客户机，直通摄像头和神经网络加速核跑视觉感知；把小核划给实时系统 Zephyr，独占一路物理串口去驱动底盘和机械臂，两边中间隔着硬件故障墙，只通过受控的共享内存通道交换识别结果。这里有个很典型的实板细节：板载管理网卡依赖的底层物理层控制器如果也一并暴露给大核客户机，客户机初始化时一旦复位这个共享控制器，宿主机自己的网页管理台就会瞬间断网。因此配置里专门剔除了这部分共享底层硬件，由宿主统一守护。
 
-右边是同一款板子的另一种配置。Linux、StarryOS 和 Zephyr 同时运行，实体网卡和存储归宿主。Linux 和 StarryOS 各用自己的虚拟磁盘，通过宿主里的虚拟交换机联网。左边检验直通设备和跨机通信，右边检验多台客户机一起运行时的存储、网络和串口。机器人这组用例上板以后，具体跑到了哪一步？"""
+右边是同一块板卡上的全虚拟化三系统拓扑：实体网卡和板载存储全部留给宿主，上面同时拉起 Linux、我们自研的宏内核 StarryOS 以及实时系统 Zephyr 三台客户机，共用宿主内建的二层虚拟交换机和虚拟块设备并发联网运行。左边这套大小核机器人配置上板之后，实际跑出了怎样的效果？"""
     )
 
     # =========================================================================
@@ -1290,42 +1444,61 @@ Type-1 是指虚拟机管理器直接跑在硬件上，不像 KVM 运行虚拟�
     # =========================================================================
     s15 = new_styled_slide(prs, stamps["gradient"])
     add_content_chrome(
-        s15, True, "06 实机与验证", AMBER_ORG,
-        "实机结果：机器人双客户机验证",
-        "Orange Pi 5 Plus（RK3588） · 2026 年 9 月 21 日实板记录",
+        s15, True, "05 实机与验证", AMBER_ORG,
+        "实机结果：RK3588 机器人双客户机闭环验证",
+        "Orange Pi 5 Plus（RK3588） · 2026 年 9 月 21 日实板运行记录",
         15, "验证结果",
-        "两组配置都完成了真实感知负载、跨客户机传输和受控反馈检查。"
+        "两组异构双系统配置均跑满约 30 帧每秒摄像头感知帧率，跨客户机通道零丢帧并完成控制反馈。"
     )
 
-    add_card(s15, 1.12, 2.84, 12.12, 8.65, title="板子上实际跑了什么", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=26, header_band=True)
-    stages = [
-        ("摄像头和 NPU", "Linux 或 StarryOS 客户机采集画面并运行推理。", BRAND_BLUE, ICE_FILL),
-        ("跨客户机通信", "感知和控制系统通过共享内存通道交换数据。", SAFE_GREEN, SAFE_BG),
-        ("控制反馈", "Zephyr 处理受控动作并返回结果，测试结束后清理资源。", AMBER_ORG, AMBER_BG),
-    ]
-    for index, (label, detail, color, fill) in enumerate(stages):
-        y = 3.84 + index * 2.36
-        add_rect(s15, 1.44, y, 11.48, 1.86, fill=fill, border=color, border_pt=1.4)
-        add_textbox(s15, 1.69, y + 0.17, 10.98, 0.53, label, size=24, color=color, bold=True)
-        add_textbox(s15, 1.69, y + 0.77, 10.98, 0.87, detail, size=23, color=DARK_NAVY, valign=MSO_ANCHOR.MIDDLE)
-        if index < len(stages) - 1:
-            add_arrow(s15, 6.95, y + 1.92, 0.46, 0.35, "down", color)
+    # Left Card: Visual Cross-Domain Closed-Loop Architecture
+    add_card(s15, 1.12, 2.84, 12.12, 8.65, title="板端实测的跨客户机感知与控制闭环", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=25, header_band=True)
 
-    add_card(s15, 13.60, 2.84, 11.95, 8.65, title="两段采样的感知帧率", accent=SAFE_GREEN, fill=WHITE, border=SAFE_BORDER, title_size=26, header_band=True)
+    add_rect(s15, 1.44, 3.80, 11.48, 2.26, fill=ICE_FILL, border=BRAND_BLUE, border_pt=1.8, rounded=True, radius=0.06)
+    add_textbox(s15, 1.66, 3.90, 11.04, 0.44, "感知客户机域（A76 大核：Linux 或 StarryOS）", size=21.5, color=BRAND_BLUE, bold=True)
+    add_rect(s15, 1.66, 4.46, 5.04, 1.38, fill=WHITE, border=BRAND_BLUE, border_pt=1.2)
+    add_textbox(s15, 1.78, 4.54, 4.80, 1.22, "USB3 摄像头实时采集\n持续输入真实视频流", size=19.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_arrow(s15, 6.84, 4.94, 0.64, 0.42, "right", BRAND_BLUE)
+    add_rect(s15, 7.62, 4.46, 5.04, 1.38, fill=WHITE, border=BRAND_BLUE, border_pt=1.2)
+    add_textbox(s15, 7.74, 4.54, 4.80, 1.22, "调用直通 RKNPU\n执行实时目标检测推理", size=19.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+
+    add_arrow(s15, 6.94, 6.14, 0.44, 0.34, "down", SAFE_GREEN)
+    add_rect(s15, 1.84, 6.54, 10.68, 1.34, fill=SAFE_BG, border=SAFE_GREEN, border_pt=2.0, rounded=True, radius=0.12)
+    add_textbox(s15, 2.04, 6.62, 10.28, 1.18, "跨客户机共享内存通道（robot-ivc）+ 核间通知中断\n高频传递感知结果与控制指令 · 全程实测丢帧数：0", size=20, color=SAFE_GREEN, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.2)
+    add_arrow(s15, 6.94, 7.94, 0.44, 0.34, "down", AMBER_ORG)
+
+    add_rect(s15, 1.44, 8.34, 11.48, 2.80, fill=AMBER_BG, border=AMBER_ORG, border_pt=1.8, rounded=True, radius=0.06)
+    add_textbox(s15, 1.66, 8.44, 11.04, 0.44, "实时控制客户机域（A55 小核：Zephyr）", size=21.5, color=AMBER_ORG, bold=True)
+    add_rect(s15, 1.66, 9.00, 5.04, 1.88, fill=WHITE, border=AMBER_ORG, border_pt=1.2)
+    add_textbox(s15, 1.78, 9.08, 4.80, 1.72, "接收跨机目标消息\n生成底盘与机械臂控制动作", size=19.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_arrow(s15, 6.84, 9.72, 0.64, 0.42, "right", AMBER_ORG)
+    add_rect(s15, 7.62, 9.00, 5.04, 1.88, fill=WHITE, border=AMBER_ORG, border_pt=1.2)
+    add_textbox(s15, 7.74, 9.08, 4.80, 1.72, "回传执行状态反馈\n用例结束自动复位清理资源", size=19.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+
+    # Right Card: Visual 30-FPS Progress Bars + Zero-Drop Badges + Honest Scope Note
+    add_card(s15, 13.60, 2.84, 11.95, 8.65, title="两段采样的实测感知帧率与通道指标", accent=SAFE_GREEN, fill=WHITE, border=SAFE_BORDER, title_size=25, header_band=True)
     measurements = [
-        ("Linux + Zephyr", "29.94 / 29.99 FPS", BRAND_BLUE, ICE_FILL),
-        ("StarryOS + Zephyr", "29.47 / 30.02 FPS", SAFE_GREEN, SAFE_BG),
+        ("Linux + Zephyr 双系统", "29.94 / 29.99 FPS", 29.965 / 30.0, BRAND_BLUE, ICE_FILL),
+        ("StarryOS + Zephyr 双系统", "29.47 / 30.02 FPS", 29.745 / 30.0, SAFE_GREEN, SAFE_BG),
     ]
-    for index, (label, values, color, fill) in enumerate(measurements):
-        y = 3.89 + index * 1.75
-        add_rect(s15, 13.94, y, 11.27, 1.46, fill=fill, border=color, border_pt=1.4)
-        add_textbox(s15, 14.14, y + 0.10, 5.50, 1.26, label, size=26, color=DARK_NAVY, bold=True, valign=MSO_ANCHOR.MIDDLE)
-        add_textbox(s15, 19.62, y + 0.10, 5.34, 1.26, values, size=29, color=color, bold=True, align=PP_ALIGN.RIGHT, valign=MSO_ANCHOR.MIDDLE)
+    for index, (label, values, ratio, color, fill) in enumerate(measurements):
+        y = 3.80 + index * 1.94
+        add_rect(s15, 13.94, y, 11.27, 1.72, fill=fill, border=color, border_pt=1.5, rounded=True, radius=0.05)
+        add_textbox(s15, 14.16, y + 0.10, 5.60, 0.64, label, size=23, color=DARK_NAVY, bold=True, valign=MSO_ANCHOR.MIDDLE)
+        add_textbox(s15, 19.76, y + 0.08, 5.20, 0.68, values, size=27, color=color, bold=True, align=PP_ALIGN.RIGHT, valign=MSO_ANCHOR.MIDDLE)
+        bar_w = 10.80
+        add_rect(s15, 14.16, y + 0.88, bar_w, 0.34, fill=WHITE, border=GRAY_BORDER, border_pt=0.9, rounded=True, radius=0.35)
+        add_rect(s15, 14.16, y + 0.88, bar_w * min(1.0, ratio), 0.34, fill=color, border=None, rounded=True, radius=0.35)
+        add_textbox(s15, 14.18, y + 1.24, 10.76, 0.42, "对比 30 FPS 摄像头满帧基线：直通摄像头与加速核基本无帧率损耗", size=16.5, color=MUTED_TEXT, valign=MSO_ANCHOR.MIDDLE)
 
-    add_textbox(s15, 14.15, 7.53, 10.78, 0.82, "两组均记录 IVC 丢帧 0，并完成控制反馈与清理。", size=22, color=DARK_NAVY, bold=True, valign=MSO_ANCHOR.MIDDLE)
-    add_rect(s15, 13.94, 8.49, 11.27, 1.61, fill=LIGHT_GRAY, border=GRAY_BORDER, border_pt=1.0)
-    add_textbox(s15, 14.15, 8.62, 10.78, 1.34, "控制阶段使用预设识别结果，夹持反馈允许模拟。", size=22, color=BODY_TEXT, valign=MSO_ANCHOR.MIDDLE)
-    source = add_textbox(s15, 14.13, 10.43, 10.88, 0.55, "来源：TGOSKits 2026 年 9 月月报 §2.7（PR #2314）", size=19, color=BRAND_BLUE, valign=MSO_ANCHOR.MIDDLE)
+    add_rect(s15, 13.94, 7.72, 5.46, 1.12, fill=SAFE_BG, border=SAFE_GREEN, border_pt=1.5, rounded=True, radius=0.06)
+    add_textbox(s15, 14.08, 7.80, 5.18, 0.96, "IVC 跨机丢帧：0\n两组配置全程零丢包", size=20.5, color=SAFE_GREEN, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_rect(s15, 19.75, 7.72, 5.46, 1.12, fill=ICE_FILL, border=BRAND_BLUE, border_pt=1.5, rounded=True, radius=0.06)
+    add_textbox(s15, 19.89, 7.80, 5.18, 0.96, "控制反馈与清理：通过\n双端状态同步完整闭环", size=20.5, color=BRAND_BLUE, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+
+    add_rect(s15, 13.94, 9.04, 11.27, 1.24, fill=LIGHT_GRAY, border=GRAY_BORDER, border_pt=1.1, rounded=True, radius=0.05)
+    add_textbox(s15, 14.15, 9.12, 10.85, 1.08, "测试边界说明：控制阶段使用预设识别结果触发受控动作，末端夹持反馈允许模拟。", size=20, color=BODY_TEXT, valign=MSO_ANCHOR.MIDDLE)
+    source = add_textbox(s15, 14.13, 10.46, 10.88, 0.55, "来源：TGOSKits 2026 年 9 月月报 §2.7（PR #2314）", size=19, color=BRAND_BLUE, valign=MSO_ANCHOR.MIDDLE)
     source.text_frame.paragraphs[0].runs[0].hyperlink.address = (
         "https://github.com/rcore-os/tgoskits/blob/a28226c70077f5120b9ab05ed44e2bf498811e6a/"
         "docs/blog/2026/10-01-september-2026-retrospective/september-2026-retrospective.md#L125-L134"
@@ -1333,78 +1506,16 @@ Type-1 是指虚拟机管理器直接跑在硬件上，不像 KVM 运行虚拟�
 
     add_notes(
         s15,
-        "实机结果：机器人双客户机验证",
-        "06 实机与验证",
+        "实机结果：RK3588 机器人双客户机闭环验证",
+        "05 实机与验证",
         1.5,
-        """9 月 21 日，我们用两种配置在 RK3588 板子上跑了测试。前半段用真实的摄像头和 NPU 跑感知负载，后半段经共享内存给 Zephyr 送预设的识别结果，检查控制端能不能处理并返回反馈。
+        """在 RK3588 实板上，我们分别用 Linux 配 Zephyr、以及自研宏内核 StarryOS 配 Zephyr 两组双客户机方案跑了实测。看左边的闭环链路，前半段由大核客户机接真实摄像头和神经网络加速核跑实时视觉推理，后半段通过跨客户机共享内存通道把预设的目标识别结果发给小核上的 Zephyr，检查控制端能不能按序执行动作、回传状态并完成资源清理。
 
-看右边的感知帧率。用 Linux 时，两段采样分别是 29.94 和 29.99 帧每秒。换成 StarryOS，分别是 29.47 和 30.02 帧每秒。两组都记录到跨客户机通道没有丢帧，最后完成了控制反馈和清理。控制阶段允许模拟夹持，所以这里测的是两个系统能不能交换结果、走完控制流程。
-
-这是当时的实测记录，双客户机机器人用例之后曾暂停自动检查。单次上板跑通只是第一步，日常改完代码怎么防止把已有的多客户机功能改坏，还得靠自动化测试持续回归。"""
+看右边的实测采样数据：无论大核跑的是原生 Linux 还是 StarryOS，两段采样的视觉感知帧率都稳定在每秒 29.5 到 30 帧之间，基本跑满了 30 帧摄像头的硬件上限，说明外设直通和二阶段页表几乎没有带来可感知的吞吐损耗；同时跨客户机共享内存通道全程记录为零丢帧。这里也客观说明测试边界：控制阶段采用预设识别结果并允许模拟末端夹持反馈，核心验证的是异构双系统在真板上的硬件隔离、高速通信与控制闭环；双客户机机器人用例在这批实测后曾暂停自动检查。"""
     )
 
     # =========================================================================
-    # SLIDE 16: 测试与验证——宿主机单测与实机测试集群
-    # =========================================================================
-    s16 = new_styled_slide(prs, stamps["gradient"])
-    add_content_chrome(
-        s16, True, "06 实机与验证", SAFE_GREEN,
-        "测试与验证：宿主机单测与实机测试集群",
-        "先在开发机通过 Rust std 单元测试拦截逻辑错误，再由 QEMU 与远程实体板卡集群执行自动回归",
-        16, "测试体系",
-        "开发机先检查组件逻辑，QEMU 和板卡再验证启动、设备与多客户机协作。"
-    )
-    add_card(s16, 1.12, 2.84, 12.25, 3.00, title="第一级 · 宿主机 std 单元测试（cargo xtask test）", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=24, header_band=True)
-    add_textbox(
-        s16, 1.40, 3.70, 11.70, 1.98,
-        "• 17 个虚拟化 crate 中已有 13 个接入 scripts/test/std_crates.csv（全仓共 78 个）\n"
-        "• 无需启动 QEMU 或烧录板卡，开发机直接验证：设备资源冲突、VirtIO 队列状态机、vGIC 中断生命周期与锁边界\n"
-        "• 在进入硬件测试前检查组件逻辑",
-        size=20, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.24
-    )
-
-    add_card(s16, 1.12, 6.08, 12.25, 3.30, title="第二级 · QEMU 与 ostool-server 自动化实机回归", accent=AMBER_ORG, fill=WHITE, border=AMBER_BORDER, title_size=24, header_band=True)
-    add_textbox(
-        s16, 1.40, 6.94, 11.70, 2.28,
-        "• test-suit/axvisor 维护 46 个常规 QEMU / 板卡测试 TOML（覆盖 AArch64 / x86_64 VMX & SVM / RISC-V / LoongArch）\n"
-        "• 自研开源 ostool-server：网络继电器断电冷重启破除内核死锁，配合 TFTP / HTTP 无盘内存引导（无 SD 卡插拔与闪存磨损）\n"
-        "• WebSocket 双向转发串口输出，按正则规则自动判定通过或超时失败",
-        size=20, color=DARK_NAVY, bold=False, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.24
-    )
-
-    kpis = [
-        ("13 / 17", "虚拟化 crate\n宿主机 std 单测", BRAND_BLUE, ICE_FILL),
-        ("46 个", "AxVisor 常规\nQEMU / 实机用例", AMBER_ORG, AMBER_BG),
-        ("19 台", "截图中的四架构\n实体开发板", SAFE_GREEN, SAFE_BG),
-    ]
-    for ki, (knum, klbl, kcol, kbg) in enumerate(kpis):
-        kx = 1.12 + ki * 4.16
-        add_rect(s16, kx, 9.64, 3.92, 1.84, fill=kbg, border=kcol, border_pt=1.8, rounded=True, radius=0.06)
-        add_textbox(s16, kx + 0.14, 9.74, 3.64, 0.86, knum, size=42, color=kcol, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
-        add_textbox(s16, kx + 0.14, 10.60, 3.64, 0.78, klbl, size=20, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
-
-    add_rect(s16, 13.70, 2.84, 11.85, 4.30, fill=WHITE, border=BRAND_BLUE, border_pt=1.5, rounded=True, radius=0.04)
-    add_picture_fit(s16, media["ostool_boards"], 13.86, 2.94, 11.53, 3.56, frame_border=GRAY_BORDER, pad=0.04)
-    add_textbox(s16, 13.84, 6.56, 11.57, 0.48, "ostool-server 开发板列表：支持 U-Boot / HTTP Boot 自动分配租约与串口控制", size=18.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
-
-    add_rect(s16, 13.70, 7.34, 11.85, 4.14, fill=WHITE, border=PURPLE, border_pt=1.5, rounded=True, radius=0.04)
-    add_picture_fit(s16, media["ostool_overview"], 13.86, 7.44, 11.53, 3.42, frame_border=GRAY_BORDER, pad=0.04)
-    add_textbox(s16, 13.84, 10.92, 11.57, 0.48, "资源总览截图：19 台实体开发板（RK3588 / 飞腾派 / 龙芯 / x86 / SG2002）", size=18.5, color=DARK_NAVY, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
-
-    add_notes(
-        s16,
-        "测试与验证：宿主机单测与实机测试集群",
-        "06 实机与验证",
-        1.5,
-        """比如改了设备分配代码，Linux 还能启动，StarryOS 的网卡却可能用不了。三台客户机要一起跑，网络、存储和串口这些检查就得写成能反复执行的用例。
-
-左上是开发机上的单元测试。有些逻辑，比如两个设备的地址有没有冲突、虚拟队列能不能按顺序处理，可以给组件接上测试用的宿主接口，在电脑上直接验证。涉及客户机启动和虚拟设备配合的用例，再拿到 QEMU 里跑。
-
-真板子由右边的 ostool-server 分配。测试占用一块板子，启动镜像后收集串口输出，按用例要求的标记逐项判断。三客户机用例会分别检查各台客户机，所有约定的检查都通过，这次运行才算通过。"""
-    )
-
-    # =========================================================================
-    # SLIDE 17: 总结与开源交流
+    # SLIDE 16: 总结与开源交流
     # =========================================================================
     s17 = new_styled_slide(prs, stamps["white"])
     add_textbox(
@@ -1413,24 +1524,24 @@ Type-1 是指虚拟机管理器直接跑在硬件上，不像 KVM 运行虚拟�
         valign=MSO_ANCHOR.MIDDLE, margin=(0.04, 0.04, 0, 0)
     )
     add_textbox(
-        s17, 10.60, 13.48, 3.00, 0.48, f"17 / {TOTAL_SLIDES}",
+        s17, 10.60, 13.48, 3.00, 0.48, f"16 / {TOTAL_SLIDES}",
         size=20, color=MUTED_TEXT, bold=True, align=PP_ALIGN.CENTER,
         valign=MSO_ANCHOR.MIDDLE
     )
 
     add_card(s17, 1.50, 3.66, 15.20, 7.28, title="小结与开源仓库", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=27, header_band=True)
     takeaways = [
-        ("1. 专用内核：", "按需选用 TGOSKits 组件。多架构共用流程，各后端处理自己的硬件。", BRAND_BLUE),
-        ("2. 内核态 std：", "宿主通过 Tokio 和 Axum 提供网页管理和串口终端。", SAFE_GREEN),
-        ("3. 实时宿主：", "控制任务可由宿主调度，视觉应用可留在隔离客户机里。", AMBER_ORG),
-        ("4. 声明式设备图：", "用一份资源规划生成宿主的设备表和客户机的硬件清单。", PURPLE),
+        ("1. 组件化专用宿主：", "基于 TGOSKits 按需组装，跨芯片自底向上求同存异复用执行骨架。", BRAND_BLUE),
+        ("2. std 安全隔离层：", "收敛底层调度与 unsafe 汇编，在内核态构建应用级安全开发环境。", SAFE_GREEN),
+        ("3. 省开销与提效率：", "内核态安全直跑实时任务省掉实时客户机，直接复用 std crate 简化开发。", AMBER_ORG),
+        ("4. 声明式设备图：", "一份配置同源生成宿主路由表与客户机固件描述，按请求最小授权。", PURPLE),
     ]
     for ti, (thead, tbody, tcol) in enumerate(takeaways):
         ty = 4.48 + ti * 0.79
         add_rect(s17, 1.82, ty, 14.56, 0.68, fill=ICE_FILL, border=BORDER_BLU, border_pt=1.0, rounded=True, radius=0.06)
         add_rich_paragraphs(
             s17, 2.00, ty + 0.02, 14.20, 0.64,
-            [([(thead, 22, tcol, True, FONT_CJK), (tbody, 21.5, DARK_NAVY, True, FONT_CJK)], 0, PP_ALIGN.LEFT)],
+            [([(thead, 21.5, tcol, True, FONT_CJK), (tbody, 21, DARK_NAVY, True, FONT_CJK)], 0, PP_ALIGN.LEFT)],
             valign=MSO_ANCHOR.MIDDLE
         )
 
@@ -1454,13 +1565,13 @@ Type-1 是指虚拟机管理器直接跑在硬件上，不像 KVM 运行虚拟�
         s17,
         "总结与开源交流",
         "总结与交流",
-        0.9,
-        """回到开场那台机器人。AxVisor 基于 TGOSKits 组件组装宿主内核，不同架构共用执行流程，各自处理底层硬件差异。内核态的 Rust 标准库支撑起网页管理台，宿主的实时调度可以直接承载控制任务，声明式设备图则把客户机所需的设备与权限配置清楚。板卡上的双客户机用例也验证了另一种部署形态，由独立的 Zephyr 客户机负责控制，再与视觉客户机通过共享内存交换结果。
+        1.0,
+        """最后回到开场提到的那块机器人主控板。面对单颗多核芯片既要跑复杂视觉应用、又要保住硬实时控制的矛盾，AxVisor 给出的答案是用 TGOSKits 组件按需组装一个专用的裸机宿主内核：对下通过自底向上的求同存异屏蔽四种处理器差异；对内以内核态标准库为安全隔离分界线，把底层的复杂调度和 unsafe 汇编收敛起来，让上层既能直接在宿主态安全跑实时任务、省掉独立实时客户机开销，又能复用成熟的标准库生态快速构建网页管理台；对外则用声明式设备图管住客户机隔离与外设分配。
 
-左边是代码仓库地址。AxVisor 集成在 TGOSKits 工作区里，可以通过 cargo xtask 命令先在 QEMU 环境里体验运行。右边是我的微信，想交流板卡适配或者手头有类似应用场景，欢迎会后深入交流。"""
+左边是我们的主仓库和测试工具仓库地址，克隆下来用一条命令就能先在模拟器里跑通体验。如果大家手头也有机器人、车载或工业控制方面的多系统混跑场景，欢迎扫右边的二维码加我微信，我们深入交流。"""
     )
 
-    # SLIDE 18: 模板致谢页
+    # SLIDE 17: 模板致谢页
     thanks = next(shape.text_frame for shape in ending.shapes if shape.has_text_frame)
     thanks.word_wrap = False
     thanks.auto_size = MSO_AUTO_SIZE.NONE
