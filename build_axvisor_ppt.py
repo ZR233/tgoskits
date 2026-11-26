@@ -1515,11 +1515,11 @@ Type-1 是指虚拟机管理器直接跑在硬件上，不像 KVM 运行虚拟�
     )
 
     # =========================================================================
-    # SLIDE 16: 总结与开源交流
+    # SLIDE 16: 开源仓库与技术交流
     # =========================================================================
     s17 = new_styled_slide(prs, stamps["white"])
     add_textbox(
-        s17, 1.12, 1.24, 24.43, 0.72, "总结与开源交流",
+        s17, 1.12, 1.24, 24.43, 0.72, "开源仓库与技术交流",
         size=40, color=DARK_NAVY, bold=True,
         valign=MSO_ANCHOR.MIDDLE, margin=(0.04, 0.04, 0, 0)
     )
@@ -1529,46 +1529,29 @@ Type-1 是指虚拟机管理器直接跑在硬件上，不像 KVM 运行虚拟�
         valign=MSO_ANCHOR.MIDDLE
     )
 
-    add_card(s17, 1.50, 3.66, 15.20, 7.28, title="小结与开源仓库", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=27, header_band=True)
-    takeaways = [
-        ("1. 组件化专用宿主：", "基于 TGOSKits 按需组装，跨芯片自底向上求同存异复用执行骨架。", BRAND_BLUE),
-        ("2. std 安全隔离层：", "收敛底层调度与 unsafe 汇编，在内核态构建应用级安全开发环境。", SAFE_GREEN),
-        ("3. 省开销与提效率：", "内核态安全直跑实时任务省掉实时客户机，直接复用 std crate 简化开发。", AMBER_ORG),
-        ("4. 声明式设备图：", "一份配置同源生成宿主路由表与客户机固件描述，按请求最小授权。", PURPLE),
-    ]
-    for ti, (thead, tbody, tcol) in enumerate(takeaways):
-        ty = 4.48 + ti * 0.79
-        add_rect(s17, 1.82, ty, 14.56, 0.68, fill=ICE_FILL, border=BORDER_BLU, border_pt=1.0, rounded=True, radius=0.06)
-        add_rich_paragraphs(
-            s17, 2.00, ty + 0.02, 14.20, 0.64,
-            [([(thead, 21.5, tcol, True, FONT_CJK), (tbody, 21, DARK_NAVY, True, FONT_CJK)], 0, PP_ALIGN.LEFT)],
-            valign=MSO_ANCHOR.MIDDLE
-        )
+    add_card(s17, 1.50, 3.46, 14.80, 7.56, title="开源仓库地址", accent=BRAND_BLUE, fill=WHITE, border=BORDER_BLU, title_size=27, header_band=True)
+    add_rect(s17, 1.92, 4.54, 13.96, 2.52, fill=ICE_FILL, border=BRAND_BLUE, border_pt=1.6, rounded=True, radius=0.06)
+    add_textbox(s17, 2.22, 4.74, 13.36, 0.56, "TGOSKits 一体化开源工作区（Apache-2.0）", size=25, color=DARK_NAVY, bold=True)
+    repo_link = add_textbox(s17, 2.22, 5.42, 13.36, 0.72, "https://github.com/rcore-os/tgoskits", size=30, color=BRAND_BLUE, bold=True, font_name=FONT_MONO)
+    repo_link.text_frame.paragraphs[0].runs[0].hyperlink.address = "https://github.com/rcore-os/tgoskits"
+    add_textbox(s17, 2.22, 6.24, 13.36, 0.54, "汇聚 AxVisor、ArceOS、StarryOS 及共享组件与跨内核驱动生态", size=20.5, color=BODY_TEXT)
 
-    add_rect(s17, 1.82, 7.82, 14.56, 2.86, fill=LIGHT_GRAY, border=GRAY_BORDER, border_pt=1.2, rounded=True, radius=0.06)
-    add_textbox(s17, 2.06, 8.02, 14.08, 0.48, "开源仓库（欢迎试用、反馈 Issue 与提交 PR · Apache-2.0 等协议）：", size=22, color=DARK_NAVY, bold=True)
-    repos = [
-        ("TGOSKits 主仓库（含 ArceOS / StarryOS / AxVisor 与 214 组件）：", "https://github.com/rcore-os/tgoskits"),
-        ("ostool 硬件自动化测试工具：", "https://github.com/drivercraft/ostool"),
-    ]
-    repo_paras = [
-        ([("• " + rl + "\n   ", 21, BODY_TEXT, True, FONT_CJK), (ru, 22, BRAND_BLUE, True, FONT_MONO)], 12, PP_ALIGN.LEFT)
-        for rl, ru in repos
-    ]
-    add_rich_paragraphs(s17, 2.06, 8.58, 14.08, 1.98, repo_paras, valign=MSO_ANCHOR.MIDDLE, line_spacing=1.18)
+    add_rect(s17, 1.92, 7.42, 13.96, 2.02, fill=CODE_BG, border=DARK_NAVY, border_pt=1.4, rounded=True, radius=0.06)
+    add_textbox(s17, 2.22, 7.60, 13.36, 0.46, "// 本地一行命令快速体验 QEMU 虚拟化场景", size=20, color=CODE_CMT, font_name=FONT_MONO)
+    add_textbox(s17, 2.22, 8.22, 13.36, 0.88, "cargo xtask axvisor qemu --arch aarch64", size=24, color=CODE_STR, bold=True, font_name=FONT_MONO, valign=MSO_ANCHOR.MIDDLE)
 
-    add_card(s17, 17.30, 3.66, 7.86, 7.28, title="扫码加微信 · 交流讨论", accent=SAFE_GREEN, fill=WHITE, border=SAFE_BORDER, title_size=26, header_band=True)
-    add_picture_fit(s17, media["wechat_qr"], 17.85, 4.50, 6.76, 5.76, frame_border=None, pad=0.04)
-    add_textbox(s17, 17.50, 10.34, 7.46, 0.46, "备注“AxVisor”或“北京沙龙”，欢迎交流技术细节", size=20, color=MUTED_TEXT, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
+    add_textbox(s17, 1.96, 9.78, 13.88, 0.80, "欢迎试用体验、反馈 Issue 与提交 PR 参与社区共建", size=21.5, color=MUTED_TEXT, bold=True, valign=MSO_ANCHOR.MIDDLE)
+
+    add_card(s17, 17.00, 3.46, 8.16, 7.56, title="扫码加微信 · 欢迎交流", accent=SAFE_GREEN, fill=WHITE, border=SAFE_BORDER, title_size=27, header_band=True)
+    add_picture_fit(s17, media["wechat_qr"], 17.64, 4.36, 6.88, 5.82, frame_border=None, pad=0.04)
+    add_textbox(s17, 17.20, 10.30, 7.76, 0.50, "欢迎扫码交流技术细节与落地场景", size=20.5, color=MUTED_TEXT, bold=True, align=PP_ALIGN.CENTER, valign=MSO_ANCHOR.MIDDLE)
 
     add_notes(
         s17,
-        "总结与开源交流",
+        "开源仓库与技术交流",
         "总结与交流",
-        1.0,
-        """最后回到开场提到的那块机器人主控板。面对单颗多核芯片既要跑复杂视觉应用、又要保住硬实时控制的矛盾，AxVisor 给出的答案是用 TGOSKits 组件按需组装一个专用的裸机宿主内核：对下通过自底向上的求同存异屏蔽四种处理器差异；对内以内核态标准库为安全隔离分界线，把底层的复杂调度和 unsafe 汇编收敛起来，让上层既能直接在宿主态安全跑实时任务、省掉独立实时客户机开销，又能复用成熟的标准库生态快速构建网页管理台；对外则用声明式设备图管住客户机隔离与外设分配。
-
-左边是我们的主仓库和测试工具仓库地址，克隆下来用一条命令就能先在模拟器里跑通体验。如果大家手头也有机器人、车载或工业控制方面的多系统混跑场景，欢迎扫右边的二维码加我微信，我们深入交流。"""
+        0.2,
+        """以上就是今天分享的全部内容。这里放一下我们开源仓库的地址和我的个人微信，欢迎一起交流探讨。"""
     )
 
     # SLIDE 17: 模板致谢页
