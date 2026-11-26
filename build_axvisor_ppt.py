@@ -231,6 +231,16 @@ def add_rich_paragraphs(
     return tb
 
 
+def disable_shape_effects(sh) -> None:
+    """Disable inherited theme effects (WPS theme1 maps effectRef idx=2 to a mirror reflection)."""
+    sh.shadow.inherit = False
+    style = sh._element.find(qn("p:style"))
+    if style is not None:
+        eff_ref = style.find(qn("a:effectRef"))
+        if eff_ref is not None:
+            eff_ref.set("idx", "0")
+
+
 def add_rect(
     slide,
     x: float,
@@ -246,6 +256,7 @@ def add_rect(
 ):
     shape_type = MSO_SHAPE.ROUNDED_RECTANGLE if rounded else MSO_SHAPE.RECTANGLE
     sh = slide.shapes.add_shape(shape_type, Inches(x), Inches(y), Inches(w), Inches(h))
+    disable_shape_effects(sh)
     if rounded:
         sh.adjustments[0] = radius
     if fill is not None:
@@ -315,6 +326,7 @@ def add_arrow(
         "ud": MSO_SHAPE.UP_DOWN_ARROW,
     }
     sh = slide.shapes.add_shape(mapping[direction], Inches(x), Inches(y), Inches(w), Inches(h))
+    disable_shape_effects(sh)
     sh.fill.solid()
     sh.fill.fore_color.rgb = color
     sh.line.fill.background()
@@ -1654,6 +1666,7 @@ def main() -> None:
             if name.startswith("ppt/slides/slide") and name.endswith(".xml"):
                 xml_bytes = z.read(name)
                 assert b"DejaVu Sans Mono" not in xml_bytes, f"{name} still contains DejaVu Sans Mono!"
+                assert b'effectRef idx="2"' not in xml_bytes and b"<a:reflection" not in xml_bytes, f"{name} still has reflection effect!"
 
     print(f"Generated {OUT_PPTX} ({len(reopened.slides)} slides, {reopened.slide_width.inches:.2f}x{reopened.slide_height.inches:.2f} in)")
     print(f"Generated {OUT_NOTES_MD} (total speaker notes: {total_chars} non-whitespace chars)")
